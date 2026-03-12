@@ -1,7 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { DesignSettings } from "@/components/settings/DesignSettings"
+import { getSettings } from "@/actions/settings"
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const settings = await getSettings()
+
   const hasElks = !!(process.env.ELKS_API_USER && process.env.ELKS_API_PASSWORD)
   const hasResend = !!process.env.RESEND_API_KEY
   const hasCoLead = !!(process.env.COLEAD_API_URL && process.env.COLEAD_FORM_ID)
@@ -15,6 +19,22 @@ export default function SettingsPage() {
       <h1 className="text-dark text-2xl font-bold mb-6">Innstillinger</h1>
 
       <div className="flex flex-col gap-6">
+        {/* Design — Färger och logga */}
+        <div>
+          <h2 className="text-dark text-lg font-bold mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z" />
+            </svg>
+            Design
+          </h2>
+          <DesignSettings
+            initialColors={settings.colors}
+            initialLogoUrl={settings.logoUrl}
+          />
+        </div>
+
+        <hr className="border-border" />
+
         {/* SMS-integration */}
         <Card>
           <CardContent className="p-6">
