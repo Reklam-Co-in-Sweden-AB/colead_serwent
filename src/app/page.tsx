@@ -53,9 +53,9 @@ export default async function Home() {
       </div>
 
       {/* Form */}
-      <div className="max-w-[900px] mx-auto py-8 px-4 sm:px-0">
+      <div className="max-w-[1100px] mx-auto py-8 px-4 sm:px-8">
         <Card>
-          <CardContent className="p-6 sm:p-8">
+          <CardContent className="p-6 sm:p-10">
             {form ? <DynamicForm form={form} /> : <OrderForm />}
           </CardContent>
         </Card>
