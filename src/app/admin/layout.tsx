@@ -23,15 +23,17 @@ export default async function AdminLayout({
           {settings.logoUrl ? (
             <img
               src={settings.logoUrl}
-              alt="Logo"
+              alt="Serwent"
               className="h-9 object-contain"
             />
           ) : (
-            <div className="w-9 h-9 bg-teal rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-base">S</span>
-            </div>
+            <>
+              <div className="w-9 h-9 bg-teal rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-base">S</span>
+              </div>
+              <span className="text-white text-lg font-semibold tracking-tight">Serwent</span>
+            </>
           )}
-          <span className="text-white text-lg font-semibold tracking-tight">Serwent</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-white/40 text-xs hidden sm:inline">{user.email}</span>

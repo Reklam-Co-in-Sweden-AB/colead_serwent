@@ -20,17 +20,19 @@ export default async function Home() {
             {settings.logoUrl ? (
               <img
                 src={settings.logoUrl}
-                alt="Logo"
+                alt="Serwent"
                 className="h-9 object-contain"
               />
             ) : (
-              <div className="w-9 h-9 bg-teal rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-base">S</span>
-              </div>
+              <>
+                <div className="w-9 h-9 bg-teal rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-base">S</span>
+                </div>
+                <span className="text-white text-lg font-semibold tracking-tight">
+                  Serwent
+                </span>
+              </>
             )}
-            <span className="text-white text-lg font-semibold tracking-tight">
-              Serwent
-            </span>
             <span className="text-teal text-sm hidden sm:inline">
               / Bestillingstømming
             </span>
@@ -40,7 +42,7 @@ export default async function Home() {
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-dark to-dark-light px-4 sm:px-8 py-10 pb-8">
-        <div className="max-w-[900px] mx-auto">
+        <div className="max-w-[900px] mx-auto px-0">
           <h1 className="text-white text-3xl font-bold mb-2 tracking-tight">
             {form?.headline || "Bestill tømming"}
           </h1>
@@ -51,7 +53,7 @@ export default async function Home() {
       </div>
 
       {/* Form */}
-      <div className="max-w-[900px] mx-auto px-4 sm:px-5 py-8">
+      <div className="max-w-[900px] mx-auto px-4 sm:px-8 py-8">
         <Card>
           <CardContent className="p-6 sm:p-8">
             {form ? <DynamicForm form={form} /> : <OrderForm />}
