@@ -4,11 +4,12 @@ import { useState, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { type SiteColors, DEFAULT_COLORS } from "@/types/settings"
-import { saveColors, uploadLogo, removeLogo } from "@/actions/settings"
+import { saveColors, uploadLogo, removeLogo, saveInfoBox } from "@/actions/settings"
 
 interface DesignSettingsProps {
   initialColors: SiteColors
   initialLogoUrl: string | null
+  initialInfoBox: string | null
 }
 
 // Färgfält med label och beskrivning
@@ -20,10 +21,12 @@ const COLOR_FIELDS: { key: keyof SiteColors; label: string; desc: string }[] = [
   { key: "background", label: "Bakgrunnsfarge", desc: "Sidens bakgrunn" },
 ]
 
-export function DesignSettings({ initialColors, initialLogoUrl }: DesignSettingsProps) {
+export function DesignSettings({ initialColors, initialLogoUrl, initialInfoBox }: DesignSettingsProps) {
   const [colors, setColors] = useState<SiteColors>(initialColors)
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl)
+  const [infoBox, setInfoBox] = useState(initialInfoBox || "")
   const [saving, setSaving] = useState(false)
+  const [savingInfoBox, setSavingInfoBox] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -85,6 +88,19 @@ export function DesignSettings({ initialColors, initialLogoUrl }: DesignSettings
     setUploading(false)
   }
 
+  const handleSaveInfoBox = async () => {
+    setSavingInfoBox(true)
+    setMessage(null)
+    const result = await saveInfoBox(infoBox)
+    if (result.error) {
+      setMessage({ type: "error", text: result.error })
+    } else {
+      setMessage({ type: "success", text: "Informasjonstekst lagret!" })
+    }
+    setSavingInfoBox(false)
+  }
+
+  const hasInfoBoxChanges = infoBox !== (initialInfoBox || "")
   const hasChanges = JSON.stringify(colors) !== JSON.stringify(initialColors)
 
   return (
@@ -159,6 +175,26 @@ export function DesignSettings({ initialColors, initialLogoUrl }: DesignSettings
               )}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Informationsruta */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-dark text-lg font-bold mb-2">Informasjonsrute</h3>
+          <p className="text-muted text-sm mb-4">
+            Vis en informasjonsrute på bestillingssiden. La feltet stå tomt for å skjule ruten.
+          </p>
+          <textarea
+            value={infoBox}
+            onChange={(e) => setInfoBox(e.target.value)}
+            placeholder="Skriv informasjonstekst her..."
+            rows={4}
+            className="w-full border-2 border-border rounded-md px-3.5 py-2.5 text-sm text-foreground bg-white outline-none resize-y transition-all duration-200 focus:border-teal focus:ring-2 focus:ring-teal/20 mb-4"
+          />
+          <Button onClick={handleSaveInfoBox} disabled={savingInfoBox || !hasInfoBoxChanges}>
+            {savingInfoBox ? "Lagrer..." : "Lagre informasjonstekst"}
+          </Button>
         </CardContent>
       </Card>
 

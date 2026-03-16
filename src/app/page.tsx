@@ -52,6 +52,20 @@ export default async function Home() {
         </div>
       </div>
 
+      {/* Informationsruta */}
+      {settings.infoBox && (
+        <div className="max-w-[1100px] mx-auto pt-8 px-4 sm:px-8">
+          <div className="bg-white border-2 border-teal/20 rounded-xl p-5 flex items-start gap-3">
+            <svg className="w-5 h-5 text-teal shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-dark leading-relaxed whitespace-pre-line">
+              {settings.infoBox}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Form */}
       <div className="max-w-[1100px] mx-auto py-8 px-4 sm:px-8">
         <Card>

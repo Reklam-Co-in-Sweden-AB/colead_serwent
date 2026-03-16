@@ -9,6 +9,7 @@ export interface SiteColors {
 export interface SiteSettings {
   colors: SiteColors
   logoUrl: string | null
+  infoBox: string | null
 }
 
 // Standardfärger (matchar globals.css)

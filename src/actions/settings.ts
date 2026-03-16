@@ -10,11 +10,12 @@ export async function getSettings(): Promise<SiteSettings> {
   const { data } = await supabase
     .from("site_settings")
     .select("key, value")
-    .in("key", ["colors", "logo_url"])
+    .in("key", ["colors", "logo_url", "info_box"])
 
   const settings: SiteSettings = {
     colors: DEFAULT_COLORS,
     logoUrl: null,
+    infoBox: null,
   }
 
   if (data) {
@@ -24,6 +25,9 @@ export async function getSettings(): Promise<SiteSettings> {
       }
       if (row.key === "logo_url") {
         settings.logoUrl = (row.value as { url: string }).url || null
+      }
+      if (row.key === "info_box") {
+        settings.infoBox = (row.value as { text: string }).text || null
       }
     }
   }
@@ -102,6 +106,24 @@ export async function uploadLogo(formData: FormData) {
   revalidatePath("/admin")
   revalidatePath("/admin/settings")
   return { success: true, logoUrl }
+}
+
+export async function saveInfoBox(text: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("site_settings")
+    .upsert({ key: "info_box", value: { text: text || null } }, { onConflict: "key" })
+
+  if (error) {
+    console.error("[saveInfoBox] Error:", error)
+    return { error: "Kunne ikke lagre informasjonstekst" }
+  }
+
+  revalidatePath("/")
+  revalidatePath("/admin")
+  revalidatePath("/admin/settings")
+  return { success: true }
 }
 
 export async function removeLogo() {

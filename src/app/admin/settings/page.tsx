@@ -30,6 +30,7 @@ export default async function SettingsPage() {
           <DesignSettings
             initialColors={settings.colors}
             initialLogoUrl={settings.logoUrl}
+            initialInfoBox={settings.infoBox}
           />
         </div>
 
