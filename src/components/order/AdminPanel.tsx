@@ -32,6 +32,7 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [filter, setFilter] = useState<OrderStatus | "alle">("alle")
   const [kommuneFilter, setKommuneFilter] = useState("")
+  const [typeFilter, setTypeFilter] = useState("")
   const [search, setSearch] = useState("")
   const [exportLoading, setExportLoading] = useState(false)
   const [view, setView] = useState<ViewMode>("table")
@@ -134,13 +135,17 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
   const filtered = orders.filter((o) => {
     const matchFilter = filter === "alle" || o.status === filter
     const matchKommune = !kommuneFilter || o.kommune === kommuneFilter
+    const orderType = getOrderType(o)
+    const matchType = !typeFilter ||
+      (typeFilter === "ordinaer" && orderType === "Ordinaer") ||
+      (typeFilter === "ekstra" && orderType.startsWith("Ekstra"))
     const s = search.toLowerCase()
     const matchSearch =
       !s ||
       [o.navn, o.kommune, o.adresse, o.order_id, o.epost].some((v) =>
         v?.toLowerCase().includes(s)
       )
-    return matchFilter && matchKommune && matchSearch
+    return matchFilter && matchKommune && matchType && matchSearch
   })
 
   const statusBadgeVariant = (status: OrderStatus) => {
@@ -264,25 +269,13 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
         ))}
       </div>
 
-      {/* Søk og kommunefilter */}
-      <div className="flex gap-3 mb-4">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Søk på namn, kommune, adresse, ID..."
-          className="flex-1 border-[1.5px] border-border rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all"
-        />
-        <select
-          value={kommuneFilter}
-          onChange={(e) => setKommuneFilter(e.target.value)}
-          className="border-[1.5px] border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all bg-white min-w-[180px]"
-        >
-          <option value="">Alle kommuner</option>
-          {KOMMUNER.map((k) => (
-            <option key={k} value={k}>{k}</option>
-          ))}
-        </select>
-      </div>
+      {/* Søk */}
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Søk på namn, kommune, adresse, ID..."
+        className="w-full border-[1.5px] border-border rounded-lg px-3.5 py-2.5 text-sm mb-4 outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all"
+      />
 
       {/* Views */}
       {filtered.length === 0 ? (
@@ -295,6 +288,10 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
           getOrderType={getOrderType}
           handleStatusChange={handleStatusChange}
           onOrderClick={openOrderDetail}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          kommuneFilter={kommuneFilter}
+          onKommuneFilterChange={setKommuneFilter}
         />
       ) : view === "kanban" ? (
         <KanbanView
@@ -389,25 +386,58 @@ function TableView({
   getOrderType,
   handleStatusChange,
   onOrderClick,
+  typeFilter,
+  onTypeFilterChange,
+  kommuneFilter,
+  onKommuneFilterChange,
 }: {
   orders: Order[]
   getOrderType: (o: Order) => string
   handleStatusChange: (id: string, status: OrderStatus) => void
   onOrderClick: (o: Order) => void
+  typeFilter: string
+  onTypeFilterChange: (v: string) => void
+  kommuneFilter: string
+  onKommuneFilterChange: (v: string) => void
 }) {
+  const thClass = "px-3 py-2.5 text-white font-semibold text-left text-xs uppercase tracking-wider whitespace-nowrap"
+  const filterSelectClass = "bg-white/15 text-white text-xs font-semibold rounded px-1.5 py-1 border border-white/30 cursor-pointer outline-none [&>option]:text-dark [&>option]:bg-white"
+
   return (
     <div className="overflow-x-auto -mx-6">
       <table className="w-full text-sm min-w-[800px]">
         <thead>
           <tr className="bg-dark">
-            {["ID", "Dato", "Type", "Kommune", "Tømming", "Navn", "Tlf", "Adresse", "Status"].map((h) => (
-              <th
-                key={h}
-                className="px-3 py-2.5 text-white font-semibold text-left text-xs uppercase tracking-wider whitespace-nowrap"
+            <th className={thClass}>ID</th>
+            <th className={thClass}>Dato</th>
+            <th className={thClass}>
+              <select
+                value={typeFilter}
+                onChange={(e) => onTypeFilterChange(e.target.value)}
+                className={filterSelectClass}
               >
-                {h}
-              </th>
-            ))}
+                <option value="">Type ▾</option>
+                <option value="ordinaer">Ordinaer</option>
+                <option value="ekstra">Ekstra</option>
+              </select>
+            </th>
+            <th className={thClass}>
+              <select
+                value={kommuneFilter}
+                onChange={(e) => onKommuneFilterChange(e.target.value)}
+                className={filterSelectClass}
+              >
+                <option value="">Kommune ▾</option>
+                {KOMMUNER.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </th>
+            <th className={thClass}>Tømming</th>
+            <th className={thClass}>Navn</th>
+            <th className={thClass}>Tlf</th>
+            <th className={thClass}>Adresse</th>
+            <th className={thClass}>Status</th>
           </tr>
         </thead>
         <tbody>
