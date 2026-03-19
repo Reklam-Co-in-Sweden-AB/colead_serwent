@@ -149,44 +149,94 @@ export async function runScheduledAutomation(automation: {
 
   const actions = automation.automation_actions.sort((a, b) => a.position - b.position)
 
-  // Kör actions mot varje matchande order
-  for (const order of orders) {
-    const vars: TemplateVars = {
-      navn: order.navn || "Kunde",
-      epost: order.epost || "",
-      telefon: order.telefon || "",
-      kommune: order.kommune || "",
-      adresse: order.adresse || "",
-      tomming_type: order.tomming_type || "",
-      order_id: order.order_id || "",
+  // Separera sammanfattningsåtgärder (attach_leads) från per-order-åtgärder
+  const summaryActions = actions.filter((a) => {
+    const cfg = a.action_config as ActionConfig
+    return cfg.attach_leads && a.action_type === "send_email"
+  })
+  const perOrderActions = actions.filter((a) => {
+    const cfg = a.action_config as ActionConfig
+    return !(cfg.attach_leads && a.action_type === "send_email")
+  })
+
+  // Kör sammanfattningsåtgärder EN gång (inte per order)
+  for (const action of summaryActions) {
+    const actionConfig = action.action_config as ActionConfig
+    // Använd tomma vars — sammanfattningsmejl behöver inte per-order-variabler
+    const summaryVars: TemplateVars = {
+      navn: "",
+      epost: "",
+      telefon: "",
+      kommune: "",
+      adresse: "",
+      tomming_type: "",
+      order_id: "",
     }
 
-    for (const action of actions) {
-      const actionConfig = action.action_config as ActionConfig
+    try {
+      await executeAction(supabase, {
+        actionType: action.action_type as ActionType,
+        actionConfig,
+        orderId: orders[0].id,
+        order: orders[0],
+        vars: summaryVars,
+        allOrders: orders,
+      })
 
-      try {
-        await executeAction(supabase, {
-          actionType: action.action_type as ActionType,
-          actionConfig,
-          orderId: order.id,
-          order,
-          vars,
-          allOrders: orders,
-        })
+      await supabase.from("automation_logs").insert({
+        automation_id: automation.id,
+        status: "success",
+        details: `Planlagt: ${action.action_type} sammanfattning skickad (${orders.length} bestillinger)`,
+      })
+    } catch (err) {
+      await supabase.from("automation_logs").insert({
+        automation_id: automation.id,
+        status: "failed",
+        details: `Planlagt: ${(err as Error).message}`,
+      })
+    }
+  }
 
-        await supabase.from("automation_logs").insert({
-          automation_id: automation.id,
-          order_id: order.id,
-          status: "success",
-          details: `Planlagt: ${action.action_type} utført for ${order.order_id}`,
-        })
-      } catch (err) {
-        await supabase.from("automation_logs").insert({
-          automation_id: automation.id,
-          order_id: order.id,
-          status: "failed",
-          details: `Planlagt: ${(err as Error).message} for ${order.order_id}`,
-        })
+  // Kör per-order-åtgärder mot varje matchande order
+  if (perOrderActions.length > 0) {
+    for (const order of orders) {
+      const vars: TemplateVars = {
+        navn: order.navn || "Kunde",
+        epost: order.epost || "",
+        telefon: order.telefon || "",
+        kommune: order.kommune || "",
+        adresse: order.adresse || "",
+        tomming_type: order.tomming_type || "",
+        order_id: order.order_id || "",
+      }
+
+      for (const action of perOrderActions) {
+        const actionConfig = action.action_config as ActionConfig
+
+        try {
+          await executeAction(supabase, {
+            actionType: action.action_type as ActionType,
+            actionConfig,
+            orderId: order.id,
+            order,
+            vars,
+            allOrders: orders,
+          })
+
+          await supabase.from("automation_logs").insert({
+            automation_id: automation.id,
+            order_id: order.id,
+            status: "success",
+            details: `Planlagt: ${action.action_type} utført for ${order.order_id}`,
+          })
+        } catch (err) {
+          await supabase.from("automation_logs").insert({
+            automation_id: automation.id,
+            order_id: order.id,
+            status: "failed",
+            details: `Planlagt: ${(err as Error).message} for ${order.order_id}`,
+          })
+        }
       }
     }
   }

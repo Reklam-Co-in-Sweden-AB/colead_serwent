@@ -207,6 +207,25 @@ export async function notifyNewOrder(orderId: string) {
   }
 }
 
+// Bestäm om en order är ordinär eller extrabestilling
+function getOrderType(order: Record<string, unknown>, allOrders: Record<string, unknown>[]): string {
+  const year = new Date(order.created_at as string).getFullYear()
+  if (!order.gnr || !order.bnr) return "Ordinaer"
+
+  const earlier = allOrders.filter(
+    (o) =>
+      o.id !== order.id &&
+      o.gnr === order.gnr &&
+      o.bnr === order.bnr &&
+      o.kommune === order.kommune &&
+      new Date(o.created_at as string).getFullYear() === year &&
+      (o.created_at as string) < (order.created_at as string)
+  )
+
+  if (earlier.length === 0) return "Ordinaer"
+  return `Ekstrabestilling (${earlier.length})`
+}
+
 // Generera Excel-fil med ordrar och returnera som base64
 export async function generateOrdersExcel(
   orders: Record<string, unknown>[]
@@ -221,6 +240,7 @@ export async function generateOrdersExcel(
   sheet.columns = [
     { header: "Bestillings-ID", key: "order_id", width: 20 },
     { header: "Status", key: "status", width: 16 },
+    { header: "Type bestilling", key: "order_type", width: 20 },
     { header: "Navn", key: "navn", width: 22 },
     { header: "Telefon", key: "telefon", width: 14 },
     { header: "E-post", key: "epost", width: 26 },
@@ -255,6 +275,7 @@ export async function generateOrdersExcel(
     sheet.addRow({
       order_id: order.order_id,
       status: statusLabels[(order.status as string) || ""] || order.status,
+      order_type: getOrderType(order, orders),
       navn: order.navn,
       telefon: order.telefon,
       epost: order.epost,
@@ -273,7 +294,7 @@ export async function generateOrdersExcel(
   // Autofilter på headern
   sheet.autoFilter = {
     from: { row: 1, column: 1 },
-    to: { row: 1, column: 12 },
+    to: { row: 1, column: 13 },
   }
 
   // Generera buffer och konvertera till base64

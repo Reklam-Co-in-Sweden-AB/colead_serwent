@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { STATUS_LABELS } from "@/lib/constants"
 import type { Order, OrderStatus } from "@/types/database"
@@ -61,21 +61,31 @@ function toCSV(orders: Order[]): string {
   return "\uFEFF" + [headers.join(";"), ...rows].join("\n")
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient()
 
-    const { data: orders, error } = await supabase
+    // Hämta eventuellt kommunefilter från query-parametrar
+    const kommune = request.nextUrl.searchParams.get("kommune")
+
+    let query = supabase
       .from("orders")
       .select("*")
       .order("created_at", { ascending: false })
+
+    if (kommune) {
+      query = query.eq("kommune", kommune)
+    }
+
+    const { data: orders, error } = await query
 
     if (error) {
       return NextResponse.json({ error: "Kunne ikke hente bestillinger" }, { status: 500 })
     }
 
     const csv = toCSV(orders || [])
-    const filename = `Serwent_Bestillinger_${new Date().toISOString().slice(0, 10)}.csv`
+    const suffix = kommune ? `_${kommune.replace(/\s+/g, "_")}` : ""
+    const filename = `Serwent_Bestillinger${suffix}_${new Date().toISOString().slice(0, 10)}.csv`
 
     return new NextResponse(csv, {
       headers: {

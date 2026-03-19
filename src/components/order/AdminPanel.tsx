@@ -7,6 +7,7 @@ import {
   STATUS_LABELS,
   STATUS_COLORS,
   ORDER_STATUSES,
+  KOMMUNER,
   type OrderStatus,
 } from "@/lib/constants"
 import type { Order } from "@/types/database"
@@ -30,6 +31,7 @@ interface AdminPanelProps {
 export function AdminPanel({ initialOrders }: AdminPanelProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [filter, setFilter] = useState<OrderStatus | "alle">("alle")
+  const [kommuneFilter, setKommuneFilter] = useState("")
   const [search, setSearch] = useState("")
   const [exportLoading, setExportLoading] = useState(false)
   const [view, setView] = useState<ViewMode>("table")
@@ -131,13 +133,14 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
 
   const filtered = orders.filter((o) => {
     const matchFilter = filter === "alle" || o.status === filter
+    const matchKommune = !kommuneFilter || o.kommune === kommuneFilter
     const s = search.toLowerCase()
     const matchSearch =
       !s ||
       [o.navn, o.kommune, o.adresse, o.order_id, o.epost].some((v) =>
         v?.toLowerCase().includes(s)
       )
-    return matchFilter && matchSearch
+    return matchFilter && matchKommune && matchSearch
   })
 
   const statusBadgeVariant = (status: OrderStatus) => {
@@ -261,13 +264,25 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
         ))}
       </div>
 
-      {/* Search */}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Søk på namn, kommune, adresse, ID..."
-        className="w-full border-[1.5px] border-border rounded-lg px-3.5 py-2.5 text-sm mb-4 outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all"
-      />
+      {/* Søk og kommunefilter */}
+      <div className="flex gap-3 mb-4">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Søk på namn, kommune, adresse, ID..."
+          className="flex-1 border-[1.5px] border-border rounded-lg px-3.5 py-2.5 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all"
+        />
+        <select
+          value={kommuneFilter}
+          onChange={(e) => setKommuneFilter(e.target.value)}
+          className="border-[1.5px] border-border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-teal focus:ring-2 focus:ring-teal/20 transition-all bg-white min-w-[180px]"
+        >
+          <option value="">Alle kommuner</option>
+          {KOMMUNER.map((k) => (
+            <option key={k} value={k}>{k}</option>
+          ))}
+        </select>
+      </div>
 
       {/* Views */}
       {filtered.length === 0 ? (
