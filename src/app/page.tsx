@@ -77,7 +77,7 @@ export default async function Home() {
               href="https://www.norge.no/nb/oppdater-eller-sjekk-kontaktinformasjon/42"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2.5 bg-dark text-white rounded-md px-5 py-3 text-xs font-bold uppercase tracking-wider no-underline self-start hover:bg-dark/85 transition-colors"
+              className="inline-flex items-center gap-2.5 bg-dark text-white rounded-md px-5 py-3 text-xs font-bold uppercase tracking-wider no-underline self-start hover:bg-dark/85 transition-colors ml-8"
             >
               Elektronisk varsling
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
