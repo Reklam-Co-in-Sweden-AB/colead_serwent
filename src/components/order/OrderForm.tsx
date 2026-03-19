@@ -279,7 +279,7 @@ export function OrderForm() {
           har lagt inn i Kontakt- og reservasjonsregisteret.
         </p>
         <a
-          href="https://eid.difi.no/nb/kontakt-og-reservasjonsregisteret"
+          href="https://www.norge.no/nb/oppdater-eller-sjekk-kontaktinformasjon/42"
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-2.5 bg-dark text-white rounded-md px-5 py-3 text-xs font-bold uppercase tracking-wider no-underline self-start hover:bg-dark-light transition-colors"
