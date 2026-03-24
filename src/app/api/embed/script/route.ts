@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   iframe.src = '${origin}/embed/' + encodeURIComponent(slug);
   iframe.style.width = '100%';
   iframe.style.border = 'none';
-  iframe.style.minHeight = '300px';
+  iframe.style.minHeight = '0';
   iframe.style.borderRadius = '8px';
   iframe.setAttribute('title', 'Bestillingsskjema');
   iframe.setAttribute('loading', 'lazy');
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(script, {
     headers: {
       "Content-Type": "application/javascript; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=300",
       "Access-Control-Allow-Origin": "*",
     },
   })

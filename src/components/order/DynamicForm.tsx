@@ -23,8 +23,8 @@ export function DynamicForm({ form }: DynamicFormProps) {
   // Skicka resize-meddelande till parent (för iframe-inbäddning)
   useEffect(() => {
     const sendHeight = () => {
-      if (window.parent !== window && formRef.current) {
-        const height = formRef.current.scrollHeight + 32
+      if (window.parent !== window) {
+        const height = document.documentElement.scrollHeight
         window.parent.postMessage(
           JSON.stringify({ type: "serwent-resize", height }),
           "*"
