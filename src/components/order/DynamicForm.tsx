@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Form, FormField, FormStep } from "@/types/forms"
 import { AddressLookup } from "@/components/order/AddressLookup"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,25 @@ export function DynamicForm({ form }: DynamicFormProps) {
   const [submitted, setSubmitted] = useState(false)
   const [orderId, setOrderId] = useState("")
   const [orderEmail, setOrderEmail] = useState("")
+
+  const formRef = useRef<HTMLDivElement>(null)
+
+  // Skicka resize-meddelande till parent (för iframe-inbäddning)
+  useEffect(() => {
+    const sendHeight = () => {
+      if (window.parent !== window && formRef.current) {
+        const height = formRef.current.scrollHeight + 32
+        window.parent.postMessage(
+          JSON.stringify({ type: "serwent-resize", height }),
+          "*"
+        )
+      }
+    }
+    sendHeight()
+    const observer = new ResizeObserver(sendHeight)
+    if (formRef.current) observer.observe(formRef.current)
+    return () => observer.disconnect()
+  }, [currentStep, submitted])
 
   const steps = form.form_steps
   const step = steps[currentStep]
@@ -203,7 +222,7 @@ export function DynamicForm({ form }: DynamicFormProps) {
   }
 
   return (
-    <div>
+    <div ref={formRef}>
       <ProgressBar />
 
       {/* Step header */}

@@ -32,7 +32,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public paths — no auth required
-  const isPublic = pathname === "/" || pathname === "/login" || pathname.startsWith("/api/")
+  const isPublic = pathname === "/" || pathname === "/login" || pathname.startsWith("/api/") || pathname.startsWith("/embed")
 
   // Redirect authenticated users away from login
   if (pathname === "/login" && user) {

@@ -13,11 +13,13 @@ interface FormItem {
   created_at: string
 }
 
-export function FormList({ forms }: { forms: FormItem[] }) {
+export function FormList({ forms, siteUrl }: { forms: FormItem[]; siteUrl: string }) {
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState("")
   const [newSlug, setNewSlug] = useState("")
   const [creating, setCreating] = useState(false)
+  const [embedFormId, setEmbedFormId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const handleCreate = async () => {
     if (!newName.trim() || !newSlug.trim()) return
@@ -71,32 +73,97 @@ export function FormList({ forms }: { forms: FormItem[] }) {
 
       <div className="flex flex-col gap-2">
         {forms.map((form) => (
-          <div key={form.id} className="flex items-center justify-between p-4 border-2 border-border rounded-lg hover:border-teal/30 transition-colors">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-dark">{form.name}</span>
-                  <Badge variant={form.status === "published" ? "success" : "default"}>
-                    {form.status === "published" ? "Publisert" : "Utkast"}
-                  </Badge>
+          <div key={form.id} className="flex flex-col gap-0">
+            <div className="flex items-center justify-between p-4 border-2 border-border rounded-lg hover:border-teal/30 transition-colors">
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-dark">{form.name}</span>
+                    <Badge variant={form.status === "published" ? "success" : "default"}>
+                      {form.status === "published" ? "Publisert" : "Utkast"}
+                    </Badge>
+                  </div>
+                  <span className="text-xs text-muted font-mono">/{form.slug}</span>
                 </div>
-                <span className="text-xs text-muted font-mono">/{form.slug}</span>
+              </div>
+              <div className="flex gap-2">
+                {form.status === "published" && (
+                  <button
+                    onClick={() => {
+                      setEmbedFormId(embedFormId === form.id ? null : form.id)
+                      setCopied(false)
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold text-dark bg-orange/10 border-2 border-orange/20 rounded-md hover:bg-orange/20 transition-colors cursor-pointer"
+                  >
+                    {embedFormId === form.id ? "Skjul kode" : "Innbygg"}
+                  </button>
+                )}
+                <a
+                  href={`/admin/forms/${form.id}`}
+                  className="px-3 py-1.5 text-xs font-semibold text-dark bg-teal/10 border-2 border-teal/20 rounded-md hover:bg-teal/20 transition-colors no-underline"
+                >
+                  Rediger
+                </a>
+                <button
+                  onClick={() => handleDelete(form.id, form.name)}
+                  className="px-3 py-1.5 text-xs font-semibold text-error hover:bg-error/10 rounded-md transition-colors cursor-pointer"
+                >
+                  Slett
+                </button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <a
-                href={`/admin/forms/${form.id}`}
-                className="px-3 py-1.5 text-xs font-semibold text-dark bg-teal/10 border-2 border-teal/20 rounded-md hover:bg-teal/20 transition-colors no-underline"
-              >
-                Rediger
-              </a>
-              <button
-                onClick={() => handleDelete(form.id, form.name)}
-                className="px-3 py-1.5 text-xs font-semibold text-error hover:bg-error/10 rounded-md transition-colors cursor-pointer"
-              >
-                Slett
-              </button>
-            </div>
+
+            {/* Inbäddningskod */}
+            {embedFormId === form.id && (
+              <div className="p-4 bg-background border-2 border-border rounded-lg mt-1">
+                <h4 className="text-sm font-bold text-dark mb-3">Innbyggingskode</h4>
+
+                {/* Alternativ 1: JavaScript-snippet */}
+                <div className="mb-4">
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">
+                    JavaScript (anbefalt for WordPress)
+                  </label>
+                  <p className="text-xs text-muted mb-2">
+                    Lim inn denne koden i en HTML-blokk eller widget i WordPress.
+                  </p>
+                  <div className="relative">
+                    <pre className="bg-dark text-white/80 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap">
+{`<div id="serwent-form" data-form="${form.slug}"></div>
+<script src="${siteUrl}/api/embed/script"></script>`}
+                    </pre>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(
+                          `<div id="serwent-form" data-form="${form.slug}"></div>\n<script src="${siteUrl}/api/embed/script"></script>`
+                        )
+                        setCopied(true)
+                        setTimeout(() => setCopied(false), 2000)
+                      }}
+                      className="absolute top-2 right-2 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-white rounded transition-colors cursor-pointer"
+                    >
+                      {copied ? "Kopiert!" : "Kopier"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Alternativ 2: iframe */}
+                <div>
+                  <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">
+                    iframe (alternativ)
+                  </label>
+                  <pre className="bg-dark text-white/80 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap">
+{`<iframe
+  src="${siteUrl}/embed/${form.slug}"
+  width="100%"
+  height="700"
+  frameborder="0"
+  title="Bestillingsskjema"
+  style="border: none; border-radius: 8px;"
+></iframe>`}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

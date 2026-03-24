@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import { ORDER_STATUSES } from "@/lib/constants"
 import { runAutomations } from "@/lib/automations"
 
@@ -8,6 +9,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Autentiseringskontroll
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: "Ikke autorisert" }, { status: 401 })
+    }
+
     const { id } = await params
     const body = await request.json()
     const { status } = body

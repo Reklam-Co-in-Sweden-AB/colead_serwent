@@ -5,10 +5,13 @@ import { runScheduledAutomation, calculateNextRunAt } from "@/lib/automations"
 // Vercel Cron anropar denna route var 5:e minut
 // Skyddas med CRON_SECRET i Authorization-headern
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET ikke konfigurert" }, { status: 503 })
+  }
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Obehörig" }, { status: 401 })
   }
 
