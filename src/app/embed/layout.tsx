@@ -1,5 +1,3 @@
-import "@/app/globals.css"
-
 // Minimal layout för inbäddade formulär — ingen header, footer eller navigation
 export default function EmbedLayout({
   children,
@@ -7,7 +5,7 @@ export default function EmbedLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white">
       {children}
     </div>
   )

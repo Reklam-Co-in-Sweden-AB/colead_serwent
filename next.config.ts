@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Globala säkerhetsheaders för alla sidor
-        source: "/:path*",
+        // Globala säkerhetsheaders för alla sidor utom embed
+        source: "/((?!embed).*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -14,10 +14,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Tillåt att embed-sidor visas i iframes från alla domäner (överskriver SAMEORIGIN)
+        // Embed-sidor — tillåt iframes från alla domäner
         source: "/embed/:path*",
         headers: [
-          { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Content-Security-Policy", value: "frame-ancestors *" },
         ],
       },
