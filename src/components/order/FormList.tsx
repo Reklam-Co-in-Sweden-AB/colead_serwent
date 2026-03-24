@@ -118,23 +118,29 @@ export function FormList({ forms, siteUrl }: { forms: FormItem[]; siteUrl: strin
               <div className="p-4 bg-background border-2 border-border rounded-lg mt-1">
                 <h4 className="text-sm font-bold text-dark mb-3">Innbyggingskode</h4>
 
-                {/* Alternativ 1: JavaScript-snippet */}
+                {/* Primär: iframe (fungerar i WordPress utan problem) */}
                 <div className="mb-4">
                   <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">
-                    JavaScript (anbefalt for WordPress)
+                    iframe (anbefalt for WordPress)
                   </label>
                   <p className="text-xs text-muted mb-2">
-                    Lim inn denne koden i en HTML-blokk eller widget i WordPress.
+                    Lim inn i en &quot;Egendefinert HTML&quot;-blokk i WordPress.
                   </p>
                   <div className="relative">
                     <pre className="bg-dark text-white/80 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap">
-{`<div id="serwent-form" data-form="${form.slug}"></div>
-<script src="${siteUrl}/api/embed/script"></script>`}
+{`<iframe
+  src="${siteUrl}/embed/${form.slug}"
+  width="100%"
+  height="700"
+  frameborder="0"
+  title="Bestillingsskjema"
+  style="border: none; border-radius: 8px;"
+></iframe>`}
                     </pre>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(
-                          `<div id="serwent-form" data-form="${form.slug}"></div>\n<script src="${siteUrl}/api/embed/script"></script>`
+`<iframe\n  src="${siteUrl}/embed/${form.slug}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="Bestillingsskjema"\n  style="border: none; border-radius: 8px;"\n></iframe>`
                         )
                         setCopied(true)
                         setTimeout(() => setCopied(false), 2000)
@@ -146,20 +152,17 @@ export function FormList({ forms, siteUrl }: { forms: FormItem[]; siteUrl: strin
                   </div>
                 </div>
 
-                {/* Alternativ 2: iframe */}
+                {/* Sekundär: JavaScript-snippet */}
                 <div>
                   <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-1 block">
-                    iframe (alternativ)
+                    JavaScript (alternativ — dynamisk høyde)
                   </label>
+                  <p className="text-xs text-muted mb-2">
+                    OBS: WordPress kan fjerne script-tagger. Bruk iframe ovenfor i stedet.
+                  </p>
                   <pre className="bg-dark text-white/80 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap">
-{`<iframe
-  src="${siteUrl}/embed/${form.slug}"
-  width="100%"
-  height="700"
-  frameborder="0"
-  title="Bestillingsskjema"
-  style="border: none; border-radius: 8px;"
-></iframe>`}
+{`<div id="serwent-form" data-form="${form.slug}"></div>
+<script src="${siteUrl}/api/embed/script"></script>`}
                   </pre>
                 </div>
               </div>
