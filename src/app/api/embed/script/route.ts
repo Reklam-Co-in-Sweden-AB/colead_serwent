@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   iframe.src = '${origin}/embed/' + encodeURIComponent(slug);
   iframe.style.width = '100%';
   iframe.style.border = 'none';
-  iframe.style.minHeight = '600px';
+  iframe.style.minHeight = '300px';
   iframe.style.borderRadius = '8px';
   iframe.setAttribute('title', 'Bestillingsskjema');
   iframe.setAttribute('loading', 'lazy');
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
       if (data.type === 'serwent-resize' && data.height) {
         iframe.style.height = data.height + 'px';
+        iframe.style.minHeight = data.height + 'px';
       }
     } catch(e) {}
   });

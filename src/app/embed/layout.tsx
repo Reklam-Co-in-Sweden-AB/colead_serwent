@@ -6,7 +6,10 @@ export default function EmbedLayout({
 }) {
   return (
     <div className="!bg-transparent">
-      <style>{`html, body { background: transparent !important; }`}</style>
+      <style>{`
+        :root { --color-background: transparent !important; }
+        html, body { background: transparent !important; margin: 0; padding: 0; }
+      `}</style>
       {children}
     </div>
   )
