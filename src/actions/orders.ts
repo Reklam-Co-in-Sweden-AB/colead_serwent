@@ -38,7 +38,8 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
 }
 
 export async function deleteOrder(orderId: string) {
-  const supabase = await createClient()
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const supabase = createAdminClient()
 
   // Ta bort relaterade meddelanden först
   await supabase.from("messages").delete().eq("order_id", orderId)
