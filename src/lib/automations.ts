@@ -356,6 +356,9 @@ async function executeAction(
     case "send_email": {
       const channel = actionType === "send_sms" ? "sms" : "email"
 
+      // Sammanfattningsmejl (attach_leads) skickas till admin, inte kunden
+      const isSummary = !!actionConfig.attach_leads && actionType === "send_email"
+
       if (actionConfig.template_id) {
         const { data: template } = await supabase
           .from("message_templates")
@@ -370,8 +373,19 @@ async function executeAction(
           ? renderTemplate(template.subject, vars)
           : undefined
 
-        const recipient = channel === "sms" ? (order.telefon as string) : (order.epost as string)
-        if (!recipient) throw new Error(`Bestilling mangler ${channel === "sms" ? "telefon" : "e-post"}`)
+        let recipient: string
+        if (isSummary) {
+          recipient = process.env.NOTIFY_EMAIL || ""
+          if (!recipient) throw new Error("NOTIFY_EMAIL ikke konfigurert — kan ikke sende sammenfattning")
+        } else if (template.recipient_type === "company") {
+          recipient = channel === "sms"
+            ? process.env.NOTIFY_PHONE || ""
+            : process.env.NOTIFY_EMAIL || ""
+          if (!recipient) throw new Error(`Mangler ${channel === "sms" ? "NOTIFY_PHONE" : "NOTIFY_EMAIL"} i miljøvariabler`)
+        } else {
+          recipient = channel === "sms" ? (order.telefon as string) : (order.epost as string)
+          if (!recipient) throw new Error(`Bestilling mangler ${channel === "sms" ? "telefon" : "e-post"}`)
+        }
 
         const result = await sendMessageToOrder({
           orderId,
@@ -386,8 +400,15 @@ async function executeAction(
         if (!result.success) throw new Error(result.error)
       } else if (actionConfig.message) {
         const renderedBody = renderTemplate(actionConfig.message, vars)
-        const recipient = channel === "sms" ? (order.telefon as string) : (order.epost as string)
-        if (!recipient) throw new Error(`Bestilling mangler ${channel === "sms" ? "telefon" : "e-post"}`)
+
+        let recipient: string
+        if (isSummary) {
+          recipient = process.env.NOTIFY_EMAIL || ""
+          if (!recipient) throw new Error("NOTIFY_EMAIL ikke konfigurert — kan ikke sende sammenfattning")
+        } else {
+          recipient = channel === "sms" ? (order.telefon as string) : (order.epost as string)
+          if (!recipient) throw new Error(`Bestilling mangler ${channel === "sms" ? "telefon" : "e-post"}`)
+        }
 
         const result = await sendMessageToOrder({
           orderId,
