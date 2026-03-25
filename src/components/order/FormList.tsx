@@ -124,23 +124,33 @@ export function FormList({ forms, siteUrl }: { forms: FormItem[]; siteUrl: strin
                     iframe (anbefalt for WordPress)
                   </label>
                   <p className="text-xs text-muted mb-2">
-                    Lim inn i en &quot;Egendefinert HTML&quot;-blokk i WordPress.
+                    Lim inn i en &quot;Egendefinert HTML&quot;-blokk i WordPress. Høyden tilpasses automatisk.
                   </p>
                   <div className="relative">
                     <pre className="bg-dark text-white/80 rounded-md p-3 text-xs overflow-x-auto whitespace-pre-wrap">
 {`<iframe
+  id="serwent-iframe"
   src="${siteUrl}/embed/${form.slug}"
   width="100%"
-  height="700"
   frameborder="0"
   title="Bestillingsskjema"
-  style="border: none; border-radius: 8px;"
-></iframe>`}
+  style="border: none; border-radius: 8px; min-height: 400px;"
+></iframe>
+<script>
+window.addEventListener('message', function(e) {
+  try {
+    var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+    if (d.type === 'serwent-resize' && d.height) {
+      document.getElementById('serwent-iframe').style.height = d.height + 'px';
+    }
+  } catch(ex) {}
+});
+</script>`}
                     </pre>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(
-`<iframe\n  src="${siteUrl}/embed/${form.slug}"\n  width="100%"\n  height="700"\n  frameborder="0"\n  title="Bestillingsskjema"\n  style="border: none; border-radius: 8px;"\n></iframe>`
+`<iframe\n  id="serwent-iframe"\n  src="${siteUrl}/embed/${form.slug}"\n  width="100%"\n  frameborder="0"\n  title="Bestillingsskjema"\n  style="border: none; border-radius: 8px; min-height: 400px;"\n></iframe>\n<script>\nwindow.addEventListener('message', function(e) {\n  try {\n    var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;\n    if (d.type === 'serwent-resize' && d.height) {\n      document.getElementById('serwent-iframe').style.height = d.height + 'px';\n    }\n  } catch(ex) {}\n});\n</script>`
                         )
                         setCopied(true)
                         setTimeout(() => setCopied(false), 2000)
