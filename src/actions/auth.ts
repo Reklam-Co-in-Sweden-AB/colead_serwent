@@ -35,6 +35,43 @@ export async function changePassword(newPassword: string) {
   return { success: true }
 }
 
+// Admin: hämta alla användare
+export async function getUsers() {
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const supabase = createAdminClient()
+
+  const { data, error } = await supabase.auth.admin.listUsers()
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return {
+    users: data.users.map((u) => ({
+      id: u.id,
+      email: u.email || "",
+      created_at: u.created_at,
+      last_sign_in_at: u.last_sign_in_at,
+    })),
+  }
+}
+
+// Admin: ändra lösenord för en annan användare
+export async function adminChangePassword(userId: string, newPassword: string) {
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const supabase = createAdminClient()
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
