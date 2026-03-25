@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DesignSettings } from "@/components/settings/DesignSettings"
+import { ChangePassword } from "@/components/settings/ChangePassword"
 import { getSettings } from "@/actions/settings"
 
 export default async function SettingsPage() {
@@ -33,6 +34,19 @@ export default async function SettingsPage() {
             initialInfoBox={settings.infoBox}
           />
         </div>
+
+        <hr className="border-border" />
+
+        {/* Endre passord */}
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-dark text-lg font-bold mb-2">Endre passord</h3>
+            <p className="text-muted text-sm mb-4">
+              Oppdater passordet for din brukerkonto.
+            </p>
+            <ChangePassword />
+          </CardContent>
+        </Card>
 
         <hr className="border-border" />
 
