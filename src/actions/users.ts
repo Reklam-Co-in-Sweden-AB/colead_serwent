@@ -64,6 +64,32 @@ export async function inviteUser(email: string, password: string) {
   return { success: true }
 }
 
+// Ändra lösenord för en användare
+export async function changeUserPassword(userId: string, newPassword: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { error: "Du må være innlogget" }
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { error: "Passordet må være minst 6 tegn" }
+  }
+
+  const admin = createAdminClient()
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  })
+
+  if (error) {
+    console.error("[changeUserPassword] Error:", error)
+    return { error: error.message || "Kunne ikke endre passordet" }
+  }
+
+  return { success: true }
+}
+
 // Ta bort användare
 export async function deleteUser(userId: string) {
   // Kontrollera att anroparen är autentiserad

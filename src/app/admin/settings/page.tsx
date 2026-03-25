@@ -2,17 +2,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DesignSettings } from "@/components/settings/DesignSettings"
 import { ChangePassword } from "@/components/settings/ChangePassword"
-import { UserManager } from "@/components/settings/UserManager"
 import { getSettings } from "@/actions/settings"
-import { getUsers } from "@/actions/auth"
-import { createClient } from "@/lib/supabase/server"
 
 export default async function SettingsPage() {
   const settings = await getSettings()
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const usersResult = await getUsers()
-  const users = "users" in usersResult ? usersResult.users : []
 
   const hasElks = !!(process.env.ELKS_API_USER && process.env.ELKS_API_PASSWORD)
   const hasResend = !!process.env.RESEND_API_KEY
@@ -54,19 +47,6 @@ export default async function SettingsPage() {
             <ChangePassword />
           </CardContent>
         </Card>
-
-        {/* Brukerhantering */}
-        {users && users.length > 0 && (
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="text-dark text-lg font-bold mb-2">Brukere</h3>
-              <p className="text-muted text-sm mb-4">
-                Administrer passord for alle brukere.
-              </p>
-              <UserManager users={users} currentUserEmail={user?.email || ""} />
-            </CardContent>
-          </Card>
-        )}
 
         <hr className="border-border" />
 

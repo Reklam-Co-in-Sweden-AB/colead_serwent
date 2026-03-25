@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { inviteUser, deleteUser, type AdminUser } from "@/actions/users"
+import { inviteUser, deleteUser, changeUserPassword, type AdminUser } from "@/actions/users"
 import { useRouter } from "next/navigation"
 
 export function UserManagement({
@@ -20,6 +20,10 @@ export function UserManagement({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [changingPwId, setChangingPwId] = useState<string | null>(null)
+  const [newPw, setNewPw] = useState("")
+  const [confirmPw, setConfirmPw] = useState("")
+  const [pwLoading, setPwLoading] = useState(false)
 
   const handleAdd = async () => {
     setError("")
@@ -41,6 +45,33 @@ export function UserManagement({
       setPassword("")
       setShowAdd(false)
       router.refresh()
+    }
+  }
+
+  const handleChangePassword = async (userId: string) => {
+    setError("")
+    setSuccess("")
+
+    if (newPw.length < 6) {
+      setError("Passordet må være minst 6 tegn")
+      return
+    }
+    if (newPw !== confirmPw) {
+      setError("Passordene stemmer ikke overens")
+      return
+    }
+
+    setPwLoading(true)
+    const result = await changeUserPassword(userId, newPw)
+    setPwLoading(false)
+
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setSuccess("Passordet er oppdatert")
+      setNewPw("")
+      setConfirmPw("")
+      setChangingPwId(null)
     }
   }
 
@@ -134,43 +165,90 @@ export function UserManagement({
       {/* Användarlista */}
       <div className="flex flex-col gap-2">
         {users.map((u) => (
-          <div
-            key={u.id}
-            className="flex items-center justify-between p-4 border-2 border-border rounded-lg"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-dark rounded-full flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-sm">
-                  {u.email.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-dark">{u.email}</span>
-                  {u.id === currentUserId && (
-                    <Badge variant="success">Du</Badge>
-                  )}
-                </div>
-                <div className="flex gap-4 mt-0.5">
-                  <span className="text-xs text-muted">
-                    Opprettet: {formatDate(u.created_at)}
-                  </span>
-                  <span className="text-xs text-muted">
-                    Siste innlogging: {formatDate(u.last_sign_in_at)}
+          <div key={u.id} className="border-2 border-border rounded-lg">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-dark rounded-full flex items-center justify-center shrink-0">
+                  <span className="text-white font-bold text-sm">
+                    {u.email.charAt(0).toUpperCase()}
                   </span>
                 </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-dark">{u.email}</span>
+                    {u.id === currentUserId && (
+                      <Badge variant="success">Du</Badge>
+                    )}
+                  </div>
+                  <div className="flex gap-4 mt-0.5">
+                    <span className="text-xs text-muted">
+                      Opprettet: {formatDate(u.created_at)}
+                    </span>
+                    <span className="text-xs text-muted">
+                      Siste innlogging: {formatDate(u.last_sign_in_at)}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              {u.id !== currentUserId && (
+              <div className="flex gap-1">
                 <button
-                  onClick={() => handleDelete(u.id, u.email)}
-                  className="px-3 py-1.5 text-xs font-semibold text-error hover:bg-error/10 rounded-md transition-colors cursor-pointer"
+                  onClick={() => {
+                    setChangingPwId(changingPwId === u.id ? null : u.id)
+                    setNewPw("")
+                    setConfirmPw("")
+                    setError("")
+                  }}
+                  className="px-3 py-1.5 text-xs font-semibold text-dark hover:bg-[#f1f5f9] rounded-md transition-colors cursor-pointer"
                 >
-                  Slett
+                  Endre passord
                 </button>
-              )}
+                {u.id !== currentUserId && (
+                  <button
+                    onClick={() => handleDelete(u.id, u.email)}
+                    className="px-3 py-1.5 text-xs font-semibold text-error hover:bg-error/10 rounded-md transition-colors cursor-pointer"
+                  >
+                    Slett
+                  </button>
+                )}
+              </div>
             </div>
+
+            {changingPwId === u.id && (
+              <div className="px-4 pb-4 pt-0">
+                <div className="p-4 bg-background rounded-lg border border-border">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex-1 flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-muted uppercase tracking-wider">Nytt passord</label>
+                      <input
+                        type="password"
+                        value={newPw}
+                        onChange={(e) => setNewPw(e.target.value)}
+                        placeholder="Minst 6 tegn"
+                        className="border-2 border-border rounded-md px-3 py-2 text-sm outline-none focus:border-teal"
+                      />
+                    </div>
+                    <div className="flex-1 flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-muted uppercase tracking-wider">Bekreft passord</label>
+                      <input
+                        type="password"
+                        value={confirmPw}
+                        onChange={(e) => setConfirmPw(e.target.value)}
+                        placeholder="Gjenta passordet"
+                        className="border-2 border-border rounded-md px-3 py-2 text-sm outline-none focus:border-teal"
+                      />
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <Button size="sm" onClick={() => handleChangePassword(u.id)} disabled={pwLoading}>
+                        {pwLoading ? "Lagrer..." : "Lagre"}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setChangingPwId(null)}>
+                        Avbryt
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
