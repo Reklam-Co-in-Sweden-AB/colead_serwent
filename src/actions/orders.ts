@@ -41,7 +41,8 @@ export async function deleteOrder(orderId: string) {
   const { createAdminClient } = await import("@/lib/supabase/admin")
   const supabase = createAdminClient()
 
-  // Ta bort relaterade meddelanden först
+  // Ta bort relaterade data först (foreign keys utan cascade)
+  await supabase.from("automation_logs").delete().eq("order_id", orderId)
   await supabase.from("messages").delete().eq("order_id", orderId)
 
   const { error } = await supabase
