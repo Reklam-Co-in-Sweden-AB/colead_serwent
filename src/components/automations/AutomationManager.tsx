@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createAutomation, toggleAutomation, deleteAutomation, runAutomationManually } from "@/actions/automations"
+import { createAutomation, updateAutomation, toggleAutomation, deleteAutomation, runAutomationManually } from "@/actions/automations"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -157,6 +157,7 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
   const [savingPresetIndex, setSavingPresetIndex] = useState<number | null>(null)
   const [error, setError] = useState("")
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   // Form state
   const [name, setName] = useState("")
@@ -187,7 +188,34 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
     setFilterOlderThan("")
     setShowForm(false)
     setShowPresets(false)
+    setEditingId(null)
     setError("")
+  }
+
+  function editAutomation(a: Automation) {
+    setEditingId(a.id)
+    setName(a.name)
+    setTriggerType(a.trigger_type)
+    const tc = a.trigger_config as Record<string, unknown>
+    setFromStatus((tc.from_status as string) || "")
+    setToStatus((tc.to_status as string) || "")
+    if (a.trigger_type === "scheduled") {
+      setScheduleType((tc.schedule_type as "once" | "recurring") || "recurring")
+      setScheduleTime((tc.schedule_time as string) || "09:00")
+      setScheduleDate((tc.schedule_date as string) || "")
+      setScheduleDays((tc.schedule_days as number[]) || [0, 1, 2, 3, 4])
+      const filter = tc.order_filter as Record<string, unknown> | undefined
+      setFilterStatus((filter?.status as string) || "")
+      setFilterOlderThan(filter?.older_than_days ? String(filter.older_than_days) : "")
+    }
+    setActions(
+      a.automation_actions
+        .sort((x, y) => x.position - y.position)
+        .map((act) => ({ action_type: act.action_type, action_config: act.action_config }))
+    )
+    setShowForm(true)
+    setShowPresets(false)
+    setShowLogs(false)
   }
 
   function usePreset(preset: AutomationPreset) {
@@ -279,12 +307,16 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
       }
     }
 
-    const result = await createAutomation({
+    const payload = {
       name: name.trim(),
       trigger_type: triggerType,
       trigger_config: triggerConfig,
       actions,
-    })
+    }
+
+    const result = editingId
+      ? await updateAutomation(editingId, payload)
+      : await createAutomation(payload)
 
     if (result?.error) {
       setError(result.error)
@@ -484,7 +516,7 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
       {showForm && !showLogs && (
         <Card className="mb-6">
           <CardContent className="p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-dark">Ny automasjon</h3>
+            <h3 className="text-lg font-semibold text-dark">{editingId ? "Rediger automasjon" : "Ny automasjon"}</h3>
 
             <div>
               <label className="block text-sm font-medium text-dark mb-1">Navn</label>
@@ -822,7 +854,7 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
 
             <div className="flex gap-2 pt-2">
               <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Oppretter..." : "Opprett automasjon"}
+                {saving ? "Lagrer..." : editingId ? "Lagre endringer" : "Opprett automasjon"}
               </Button>
               <Button variant="secondary" onClick={resetForm}>
                 Avbryt
@@ -916,6 +948,9 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
                               disabled={runningId === a.id}
                             >
                               {runningId === a.id ? "Kjører..." : "Kjør nå"}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => editAutomation(a)}>
+                              Rediger
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleToggle(a.id, a.enabled)}>
                               {a.enabled ? "Deaktiver" : "Aktiver"}

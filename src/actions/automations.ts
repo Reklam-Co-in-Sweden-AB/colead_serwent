@@ -105,6 +105,57 @@ export async function deleteAutomation(id: string) {
   return { success: true }
 }
 
+// Uppdatera en befintlig automation
+export async function updateAutomation(id: string, data: {
+  name: string
+  trigger_type: string
+  trigger_config: Record<string, unknown>
+  actions: { action_type: string; action_config: Record<string, unknown> }[]
+}) {
+  const supabase = await createClient()
+
+  // Beräkna next_run_at för schemalagda automationer
+  let nextRunAt: string | null = null
+  if (data.trigger_type === "scheduled") {
+    const { calculateNextRunAt } = await import("@/lib/automations")
+    nextRunAt = calculateNextRunAt(data.trigger_config)
+    if (!nextRunAt) return { error: "Kunne ikke beregne neste kjøretidspunkt. Sjekk dato og klokkeslett." }
+  }
+
+  const { error } = await supabase
+    .from("automations")
+    .update({
+      name: data.name,
+      trigger_type: data.trigger_type,
+      trigger_config: data.trigger_config,
+      ...(nextRunAt ? { next_run_at: nextRunAt } : {}),
+    })
+    .eq("id", id)
+
+  if (error) return { error: "Kunne ikke oppdatere automation" }
+
+  // Ta bort gamla actions och skapa nya
+  await supabase.from("automation_actions").delete().eq("automation_id", id)
+
+  if (data.actions.length > 0) {
+    const actions = data.actions.map((a, i) => ({
+      automation_id: id,
+      action_type: a.action_type,
+      action_config: a.action_config,
+      position: i,
+    }))
+
+    const { error: actionsError } = await supabase
+      .from("automation_actions")
+      .insert(actions)
+
+    if (actionsError) return { error: "Kunne ikke oppdatere handlinger" }
+  }
+
+  revalidatePath("/admin/automations")
+  return { success: true }
+}
+
 // Kör en automation manuellt
 export async function runAutomationManually(id: string) {
   const supabase = await createClient()
