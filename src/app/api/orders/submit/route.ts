@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const {
       kommune, tomming_type, navn, epost, telefon,
       adresse, gnr, bnr, kommentar,
-      form_id, form_data,
+      form_id,
     } = body
 
     // Validate core fields (mapped from dynamic form or hardcoded)
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Asynkrona sidoeffekter (blockerar ej svaret)
-    Promise.allSettled([
+    // Vänta på sidoeffekter innan svaret skickas (krävs på Vercel serverless)
+    await Promise.allSettled([
       syncToCoLead({
         kommune: kommune?.trim() || "",
         tomming_type: tomming_type?.trim() || "",

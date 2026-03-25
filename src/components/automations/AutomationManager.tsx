@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createAutomation, toggleAutomation, deleteAutomation } from "@/actions/automations"
+import { createAutomation, toggleAutomation, deleteAutomation, runAutomationManually } from "@/actions/automations"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -309,6 +309,21 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
     const result = await deleteAutomation(id)
     if (!result?.error) {
       setAutomations((prev) => prev.filter((a) => a.id !== id))
+    }
+  }
+
+  const [runningId, setRunningId] = useState<string | null>(null)
+
+  async function handleRunManually(id: string) {
+    if (!confirm("Kjøre denne automasjonen manuelt nå?")) return
+    setRunningId(id)
+    const result = await runAutomationManually(id)
+    setRunningId(null)
+    if (result?.error) {
+      alert(`Feil: ${result.error}`)
+    } else {
+      alert("Automasjonen ble kjørt.")
+      window.location.reload()
     }
   }
 
@@ -894,6 +909,14 @@ export function AutomationManager({ initialAutomations, templates, logs }: Autom
                           </div>
 
                           <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRunManually(a.id)}
+                              disabled={runningId === a.id}
+                            >
+                              {runningId === a.id ? "Kjører..." : "Kjør nå"}
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleToggle(a.id, a.enabled)}>
                               {a.enabled ? "Deaktiver" : "Aktiver"}
                             </Button>

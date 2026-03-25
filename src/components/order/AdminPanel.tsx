@@ -336,6 +336,7 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
             setSelectedOrder({ ...selectedOrder, status })
           }}
           onClose={() => setSelectedOrder(null)}
+          onMessageSent={() => openOrderDetail(selectedOrder)}
         />
       )}
     </div>
@@ -709,6 +710,7 @@ function OrderDetail({
   getOrderType,
   onStatusChange,
   onClose,
+  onMessageSent,
 }: {
   order: Order
   messages: OrderMessage[]
@@ -716,7 +718,46 @@ function OrderDetail({
   getOrderType: (o: Order) => string
   onStatusChange: (status: OrderStatus) => void
   onClose: () => void
+  onMessageSent: () => void
 }) {
+  const [showSendForm, setShowSendForm] = useState(false)
+  const [sendChannel, setSendChannel] = useState<"email" | "sms">("email")
+  const [sendSubject, setSendSubject] = useState("")
+  const [sendBody, setSendBody] = useState("")
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState("")
+
+  async function handleSendMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!sendBody.trim()) return
+
+    setSending(true)
+    setSendError("")
+
+    try {
+      const { sendDirectMessage } = await import("@/actions/messages")
+      const result = await sendDirectMessage({
+        orderId: order.id,
+        channel: sendChannel,
+        subject: sendChannel === "email" ? sendSubject : undefined,
+        body: sendBody,
+      })
+
+      if ("success" in result && result.success) {
+        setSendBody("")
+        setSendSubject("")
+        setShowSendForm(false)
+        onMessageSent()
+      } else {
+        setSendError(result.error || "Kunne ikke sende melding")
+      }
+    } catch {
+      setSendError("En uventet feil oppstod")
+    }
+
+    setSending(false)
+  }
+
   return (
     <>
       {/* Backdrop */}
@@ -801,6 +842,88 @@ function OrderDetail({
               </div>
             </div>
           )}
+
+          {/* Send melding manuelt */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Send melding</h3>
+              {!showSendForm && (
+                <button
+                  onClick={() => setShowSendForm(true)}
+                  className="text-xs font-semibold text-teal hover:underline cursor-pointer"
+                >
+                  Ny melding
+                </button>
+              )}
+            </div>
+            {showSendForm && (
+              <form onSubmit={handleSendMessage} className="bg-[#f8fafc] border border-border rounded-lg p-4 space-y-3">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSendChannel("email")}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                      sendChannel === "email"
+                        ? "bg-dark text-white"
+                        : "bg-white border border-border text-muted hover:text-dark"
+                    }`}
+                  >
+                    E-post
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSendChannel("sms")}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
+                      sendChannel === "sms"
+                        ? "bg-dark text-white"
+                        : "bg-white border border-border text-muted hover:text-dark"
+                    }`}
+                  >
+                    SMS
+                  </button>
+                </div>
+                <p className="text-xs text-muted">
+                  Til: {sendChannel === "email" ? order.epost : order.telefon}
+                </p>
+                {sendChannel === "email" && (
+                  <input
+                    type="text"
+                    placeholder="Emne"
+                    value={sendSubject}
+                    onChange={(e) => setSendSubject(e.target.value)}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-teal"
+                  />
+                )}
+                <textarea
+                  placeholder={sendChannel === "email" ? "Skriv meldingen..." : "Skriv SMS-melding..."}
+                  value={sendBody}
+                  onChange={(e) => setSendBody(e.target.value)}
+                  rows={4}
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-teal resize-none"
+                />
+                {sendChannel === "sms" && (
+                  <p className="text-[10px] text-muted">{sendBody.length}/160 tegn</p>
+                )}
+                {sendError && <p className="text-xs text-error">{sendError}</p>}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => { setShowSendForm(false); setSendError("") }}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold text-muted hover:text-dark cursor-pointer"
+                  >
+                    Avbryt
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sending || !sendBody.trim()}
+                    className="px-4 py-1.5 rounded-md text-xs font-semibold bg-teal text-white hover:bg-teal/90 disabled:opacity-50 cursor-pointer"
+                  >
+                    {sending ? "Sender..." : "Send"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
 
           {/* Meldingshistorikk */}
           <div>
