@@ -337,6 +337,17 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
           }}
           onClose={() => setSelectedOrder(null)}
           onMessageSent={() => openOrderDetail(selectedOrder)}
+          onDelete={async () => {
+            if (!confirm("Er du sikker på at du vil slette denne bestillingen?")) return
+            const { deleteOrder } = await import("@/actions/orders")
+            const result = await deleteOrder(selectedOrder.id)
+            if (result.success) {
+              setOrders((prev) => prev.filter((o) => o.id !== selectedOrder.id))
+              setSelectedOrder(null)
+            } else {
+              alert(result.error || "Kunne ikke slette")
+            }
+          }}
         />
       )}
     </div>
@@ -711,6 +722,7 @@ function OrderDetail({
   onStatusChange,
   onClose,
   onMessageSent,
+  onDelete,
 }: {
   order: Order
   messages: OrderMessage[]
@@ -719,6 +731,7 @@ function OrderDetail({
   onStatusChange: (status: OrderStatus) => void
   onClose: () => void
   onMessageSent: () => void
+  onDelete: () => void
 }) {
   const [showSendForm, setShowSendForm] = useState(false)
   const [sendChannel, setSendChannel] = useState<"email" | "sms">("email")
@@ -878,6 +891,12 @@ function OrderDetail({
                   Skriv fri melding
                 </button>
               )}
+              <button
+                onClick={onDelete}
+                className="px-4 py-2 rounded-lg text-xs font-semibold border border-error/30 text-error hover:bg-error/5 cursor-pointer transition-all"
+              >
+                Slett bestilling
+              </button>
             </div>
             {resendResult && (
               <p className="text-xs text-muted mt-2">{resendResult}</p>

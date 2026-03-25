@@ -37,6 +37,26 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   return { success: true }
 }
 
+export async function deleteOrder(orderId: string) {
+  const supabase = await createClient()
+
+  // Ta bort relaterade meddelanden först
+  await supabase.from("messages").delete().eq("order_id", orderId)
+
+  const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", orderId)
+
+  if (error) {
+    console.error("[deleteOrder] Error:", error)
+    return { error: "Kunne ikke slette bestillingen" }
+  }
+
+  revalidatePath("/admin/orders")
+  return { success: true }
+}
+
 export async function getOrderStats() {
   const supabase = await createClient()
 
