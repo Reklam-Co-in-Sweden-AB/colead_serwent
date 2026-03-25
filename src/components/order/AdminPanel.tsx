@@ -726,6 +726,22 @@ function OrderDetail({
   const [sendBody, setSendBody] = useState("")
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState("")
+  const [resending, setResending] = useState(false)
+  const [resendResult, setResendResult] = useState("")
+
+  async function handleResendNotifications() {
+    setResending(true)
+    setResendResult("")
+    try {
+      const { resendOrderNotifications } = await import("@/actions/messages")
+      const result = await resendOrderNotifications(order.id)
+      setResendResult(result.details || "Sendt")
+      onMessageSent()
+    } catch {
+      setResendResult("En uventet feil oppstod")
+    }
+    setResending(false)
+  }
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault()
@@ -843,20 +859,34 @@ function OrderDetail({
             </div>
           )}
 
-          {/* Send melding manuelt */}
+          {/* Kjør automasjoner på nytt */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">Send melding</h3>
+            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">Handlinger</h3>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleResendNotifications}
+                disabled={resending}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-dark text-white hover:bg-dark/90 disabled:opacity-50 cursor-pointer transition-all"
+              >
+                {resending ? "Sender..." : "Send bekreftelse på nytt"}
+              </button>
               {!showSendForm && (
                 <button
                   onClick={() => setShowSendForm(true)}
-                  className="text-xs font-semibold text-teal hover:underline cursor-pointer"
+                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-border text-dark hover:bg-[#f1f5f9] cursor-pointer transition-all"
                 >
-                  Ny melding
+                  Skriv fri melding
                 </button>
               )}
             </div>
-            {showSendForm && (
+            {resendResult && (
+              <p className="text-xs text-muted mt-2">{resendResult}</p>
+            )}
+          </div>
+
+          {/* Send fri melding manuelt */}
+          {showSendForm && (
+            <div>
               <form onSubmit={handleSendMessage} className="bg-[#f8fafc] border border-border rounded-lg p-4 space-y-3">
                 <div className="flex gap-2">
                   <button
@@ -922,8 +952,8 @@ function OrderDetail({
                   </button>
                 </div>
               </form>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Meldingshistorikk */}
           <div>

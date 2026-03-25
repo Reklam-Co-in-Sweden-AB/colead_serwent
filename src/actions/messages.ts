@@ -181,6 +181,31 @@ export async function sendDirectMessage(opts: {
   return result
 }
 
+// Kör om automationer och admin-notis för en bestilling
+export async function resendOrderNotifications(orderId: string) {
+  const { runAutomations } = await import("@/lib/automations")
+  const { notifyNewOrder } = await import("@/lib/messaging")
+
+  const results: string[] = []
+
+  try {
+    await runAutomations("new_order", orderId)
+    results.push("Automasjoner kjørt")
+  } catch (err) {
+    results.push(`Automasjonsfeil: ${(err as Error).message}`)
+  }
+
+  try {
+    await notifyNewOrder(orderId)
+    results.push("Admin-varsel sendt")
+  } catch (err) {
+    results.push(`Admin-varselfeil: ${(err as Error).message}`)
+  }
+
+  revalidatePath("/admin/orders")
+  return { success: true, details: results.join(". ") }
+}
+
 // Hent meldingshistorikk for en bestilling
 export async function getOrderMessages(orderId: string) {
   const supabase = await createClient()
