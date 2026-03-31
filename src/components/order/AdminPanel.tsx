@@ -337,6 +337,10 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
           }}
           onClose={() => setSelectedOrder(null)}
           onMessageSent={() => openOrderDetail(selectedOrder)}
+          onInternalCommentSaved={(comment) => {
+            setSelectedOrder({ ...selectedOrder, intern_kommentar: comment || null })
+            setOrders((prev) => prev.map((o) => o.id === selectedOrder.id ? { ...o, intern_kommentar: comment || null } : o))
+          }}
           onDelete={async () => {
             if (!confirm("Er du sikker på at du vil slette denne bestillingen?")) return
             const { deleteOrder } = await import("@/actions/orders")
@@ -723,6 +727,7 @@ function OrderDetail({
   onClose,
   onMessageSent,
   onDelete,
+  onInternalCommentSaved,
 }: {
   order: Order
   messages: OrderMessage[]
@@ -732,6 +737,7 @@ function OrderDetail({
   onClose: () => void
   onMessageSent: () => void
   onDelete: () => void
+  onInternalCommentSaved: (comment: string) => void
 }) {
   const [showSendForm, setShowSendForm] = useState(false)
   const [sendChannel, setSendChannel] = useState<"email" | "sms">("email")
@@ -741,6 +747,30 @@ function OrderDetail({
   const [sendError, setSendError] = useState("")
   const [resending, setResending] = useState(false)
   const [resendResult, setResendResult] = useState("")
+  const [internKommentar, setInternKommentar] = useState(order.intern_kommentar || "")
+  const [savingComment, setSavingComment] = useState(false)
+  const [commentSaved, setCommentSaved] = useState(false)
+
+  useEffect(() => {
+    setInternKommentar(order.intern_kommentar || "")
+  }, [order.id, order.intern_kommentar])
+
+  async function handleSaveInternalComment() {
+    setSavingComment(true)
+    setCommentSaved(false)
+    try {
+      const { updateInternalComment } = await import("@/actions/orders")
+      const result = await updateInternalComment(order.id, internKommentar)
+      if (result.success) {
+        setCommentSaved(true)
+        onInternalCommentSaved(internKommentar)
+        setTimeout(() => setCommentSaved(false), 2000)
+      }
+    } catch {
+      // Feil vid lagring
+    }
+    setSavingComment(false)
+  }
 
   async function handleResendNotifications() {
     setResending(true)
@@ -871,6 +901,30 @@ function OrderDetail({
               </div>
             </div>
           )}
+
+          {/* Intern kommentar (kun synlig i admin) */}
+          <div>
+            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Intern kommentar</h3>
+            <textarea
+              value={internKommentar}
+              onChange={(e) => { setInternKommentar(e.target.value); setCommentSaved(false) }}
+              placeholder="Skriv en intern kommentar (kun synlig for admin)..."
+              rows={3}
+              className="w-full border border-border rounded-lg px-3 py-2 text-sm outline-none focus:border-teal resize-none"
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={handleSaveInternalComment}
+                disabled={savingComment || internKommentar === (order.intern_kommentar || "")}
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-dark text-white hover:bg-dark/90 disabled:opacity-50 cursor-pointer transition-all"
+              >
+                {savingComment ? "Lagrer..." : "Lagre kommentar"}
+              </button>
+              {commentSaved && (
+                <span className="text-xs text-success font-medium">Lagret!</span>
+              )}
+            </div>
+          </div>
 
           {/* Kjør automasjoner på nytt */}
           <div>

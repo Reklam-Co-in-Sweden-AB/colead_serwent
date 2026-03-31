@@ -12,6 +12,7 @@ export interface Order {
   gnr: string
   bnr: string
   kommentar: string | null
+  intern_kommentar: string | null
   status: OrderStatus
   colead_synced: boolean
   colead_lead_id: string | null
@@ -44,6 +45,7 @@ export interface OrderUpdate {
   gnr?: string
   bnr?: string
   kommentar?: string | null
+  intern_kommentar?: string | null
   status?: OrderStatus
   colead_synced?: boolean
   colead_lead_id?: string | null

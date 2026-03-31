@@ -59,6 +59,23 @@ export async function deleteOrder(orderId: string) {
   return { success: true }
 }
 
+export async function updateInternalComment(orderId: string, internKommentar: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ intern_kommentar: internKommentar || null })
+    .eq("id", orderId)
+
+  if (error) {
+    console.error("[updateInternalComment] Error:", error)
+    return { error: "Kunne ikke lagre intern kommentar" }
+  }
+
+  revalidatePath("/admin")
+  return { success: true }
+}
+
 export async function getOrderStats() {
   const supabase = await createClient()
 
