@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { revalidatePath } from "next/cache"
 import type { Form, FormStep, FormField, FieldOption } from "@/types/forms"
 
@@ -166,9 +167,9 @@ export async function saveFormStructure(
     }[]
   }[]
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  // Delete all existing steps and fields (cascade deletes fields)
+  // Radera befintliga steg och fält (cascade raderar fält)
   await supabase.from("form_steps").delete().eq("form_id", formId)
 
   // Insert new steps with fields
