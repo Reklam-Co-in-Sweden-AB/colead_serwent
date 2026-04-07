@@ -82,6 +82,7 @@ export function FormBuilder({ form }: FormBuilderProps) {
   const [activeStep, setActiveStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const [formMeta, setFormMeta] = useState({
     headline: form.headline || "",
     description: form.description || "",
@@ -162,7 +163,8 @@ export function FormBuilder({ form }: FormBuilderProps) {
   // ── Save ──
   const handleSave = async () => {
     setSaving(true)
-    await Promise.all([
+    setSaveError("")
+    const [structureResult] = await Promise.all([
       saveFormStructure(
         form.id,
         steps.map((s) => ({
@@ -183,8 +185,12 @@ export function FormBuilder({ form }: FormBuilderProps) {
       updateForm(form.id, formMeta),
     ])
     setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    if (structureResult?.error) {
+      setSaveError(structureResult.error)
+    } else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    }
   }
 
   const handleToggleStatus = async () => {
@@ -209,6 +215,11 @@ export function FormBuilder({ form }: FormBuilderProps) {
           <Button size="sm" onClick={handleSave} disabled={saving}>
             {saved ? "Lagret!" : saving ? "Lagrer..." : "Lagre endringer"}
           </Button>
+          {saveError && (
+            <div className="w-full bg-red-50 border border-red-200 rounded-md px-4 py-2 text-xs text-red-700">
+              {saveError}
+            </div>
+          )}
         </div>
       </div>
 

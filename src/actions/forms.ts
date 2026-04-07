@@ -168,11 +168,16 @@ export async function saveFormStructure(
   }[]
 ) {
   const supabase = createAdminClient()
+  const errors: string[] = []
 
   // Radera befintliga steg och fält (cascade raderar fält)
-  await supabase.from("form_steps").delete().eq("form_id", formId)
+  const { error: deleteError } = await supabase.from("form_steps").delete().eq("form_id", formId)
+  if (deleteError) {
+    console.error("[saveFormStructure] Delete error:", deleteError)
+    return { error: `Kunne ikke slette eksisterende steg: ${deleteError.message}` }
+  }
 
-  // Insert new steps with fields
+  // Sett inn nye steg med felter
   for (const step of steps) {
     const { data: newStep, error: stepError } = await supabase
       .from("form_steps")
@@ -187,6 +192,7 @@ export async function saveFormStructure(
 
     if (stepError || !newStep) {
       console.error("[saveFormStructure] Step error:", stepError)
+      errors.push(`Steg "${step.title}": ${stepError?.message || "ukjent feil"}`)
       continue
     }
 
@@ -208,11 +214,16 @@ export async function saveFormStructure(
 
       if (fieldsError) {
         console.error("[saveFormStructure] Fields error:", fieldsError)
+        errors.push(`Felter i "${step.title}": ${fieldsError.message}`)
       }
     }
   }
 
   revalidatePath("/admin")
   revalidatePath("/")
+
+  if (errors.length > 0) {
+    return { error: errors.join("; ") }
+  }
   return { success: true }
 }
