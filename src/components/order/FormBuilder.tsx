@@ -52,6 +52,7 @@ const MAPPINGS = [
   { value: "kommune", label: "Kommune" },
   { value: "tomming_type", label: "Type tømming" },
   { value: "kommentar", label: "Kommentar" },
+  { value: "tank_storrelse_m3", label: "Tankstørrelse (m³)" },
 ]
 
 function genId() {

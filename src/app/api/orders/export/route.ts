@@ -35,6 +35,7 @@ function toCSV(orders: Order[]): string {
     "Gnr",
     "Bnr",
     "Kommentar",
+    "Tankstorrelse (m3)",
     "Status",
   ]
 
@@ -52,6 +53,7 @@ function toCSV(orders: Order[]): string {
       o.gnr,
       o.bnr,
       o.kommentar || "",
+      o.tank_storrelse_m3 != null ? String(o.tank_storrelse_m3) : "",
       STATUS_LABELS[o.status as OrderStatus] || o.status,
     ]
       .map((v) => `"${String(v).replace(/"/g, '""')}"`)

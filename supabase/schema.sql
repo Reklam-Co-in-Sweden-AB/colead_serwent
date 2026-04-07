@@ -14,6 +14,7 @@ create table if not exists public.orders (
   gnr text not null,
   bnr text not null,
   kommentar text,
+  tank_storrelse_m3 numeric(10,2),
   intern_kommentar text,
   status text not null default 'ny' check (status in ('ny', 'under_behandling', 'utfort')),
   colead_synced boolean not null default false,

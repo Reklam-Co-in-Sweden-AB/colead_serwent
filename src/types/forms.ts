@@ -19,6 +19,7 @@ export type FieldMapping =
   | "kommune"
   | "tomming_type"
   | "kommentar"
+  | "tank_storrelse_m3"
   | null
 
 export type FieldOption = { value: string; label: string }

@@ -12,6 +12,7 @@ interface CoLeadSyncData {
   gnr: string
   bnr: string
   kommentar: string | null
+  tank_storrelse_m3: number | null
   order_id: string
 }
 
@@ -37,6 +38,7 @@ export async function syncToCoLead(data: CoLeadSyncData): Promise<{ success: boo
           gnr: data.gnr,
           bnr: data.bnr,
           kommentar: data.kommentar || "",
+          tank_storrelse_m3: data.tank_storrelse_m3,
           order_id: data.order_id,
         },
         // CoLead extracts these automatically from form field types

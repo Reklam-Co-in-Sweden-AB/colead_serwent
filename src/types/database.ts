@@ -12,6 +12,7 @@ export interface Order {
   gnr: string
   bnr: string
   kommentar: string | null
+  tank_storrelse_m3: number | null
   intern_kommentar: string | null
   status: OrderStatus
   colead_synced: boolean
@@ -31,6 +32,7 @@ export interface OrderInsert {
   gnr: string
   bnr: string
   kommentar?: string | null
+  tank_storrelse_m3?: number | null
   status?: OrderStatus
 }
 
@@ -45,6 +47,7 @@ export interface OrderUpdate {
   gnr?: string
   bnr?: string
   kommentar?: string | null
+  tank_storrelse_m3?: number | null
   intern_kommentar?: string | null
   status?: OrderStatus
   colead_synced?: boolean

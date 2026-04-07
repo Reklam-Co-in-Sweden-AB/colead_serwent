@@ -16,6 +16,7 @@ interface FormData {
   adresse: string
   gnr: string
   bnr: string
+  tank_storrelse_m3: string
   kommentar: string
 }
 
@@ -28,6 +29,7 @@ const EMPTY_FORM: FormData = {
   adresse: "",
   gnr: "",
   bnr: "",
+  tank_storrelse_m3: "",
   kommentar: "",
 }
 
@@ -223,6 +225,15 @@ export function OrderForm() {
           required
         />
       </div>
+
+      <Input
+        label="Tankstørrelse (m³)"
+        type="number"
+        placeholder="F.eks. 4"
+        value={form.tank_storrelse_m3}
+        onChange={(e) => update("tank_storrelse_m3", e.target.value)}
+        error={errors.tank_storrelse_m3}
+      />
 
       <div className="bg-teal/5 border-2 border-teal/20 rounded-md px-4 py-3 text-xs text-dark leading-relaxed">
         <strong>Tips:</strong> Gnr og Bnr fylles ut automatisk når du velger en

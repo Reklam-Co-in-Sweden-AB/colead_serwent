@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       kommune, tomming_type, navn, epost, telefon,
-      adresse, gnr, bnr, kommentar,
+      adresse, gnr, bnr, kommentar, tank_storrelse_m3,
       form_id,
     } = body
 
@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       gnr: gnr?.trim() || "",
       bnr: bnr?.trim() || "",
       kommentar: kommentar?.trim() || null,
+      tank_storrelse_m3: tank_storrelse_m3 ? parseFloat(tank_storrelse_m3) : null,
       status: "ny",
     }
 
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
         gnr: gnr?.trim() || "",
         bnr: bnr?.trim() || "",
         kommentar: kommentar?.trim() || null,
+        tank_storrelse_m3: tank_storrelse_m3 ? parseFloat(tank_storrelse_m3) : null,
         order_id: orderId,
       }).then(async (result) => {
         if (result.success && result.lead_id) {

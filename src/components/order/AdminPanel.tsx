@@ -424,7 +424,6 @@ function TableView({
       <table className="w-full text-sm min-w-[800px]">
         <thead>
           <tr className="bg-dark">
-            <th className={thClass}>ID</th>
             <th className={thClass}>Dato</th>
             <th className={thClass}>
               <select
@@ -454,6 +453,7 @@ function TableView({
             <th className={thClass}>Tlf</th>
             <th className={thClass}>Adresse</th>
             <th className={thClass}>Status</th>
+            <th className={thClass}>Kommentar</th>
           </tr>
         </thead>
         <tbody>
@@ -463,7 +463,6 @@ function TableView({
               onClick={() => onOrderClick(o)}
               className={`${i % 2 === 0 ? "bg-[#f8fafc]" : "bg-white"} border-b border-[#edf2f7] cursor-pointer hover:bg-teal/5 transition-colors`}
             >
-              <td className="px-3 py-2.5 text-muted font-mono text-xs">{o.order_id}</td>
               <td className="px-3 py-2.5 whitespace-nowrap text-muted-foreground text-xs">
                 {new Date(o.created_at).toLocaleString("nb-NO")}
               </td>
@@ -500,6 +499,12 @@ function TableView({
                     <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                   ))}
                 </select>
+              </td>
+              <td
+                className="px-3 py-2.5 text-muted-foreground text-xs max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                title={o.kommentar || ""}
+              >
+                {o.kommentar || "–"}
               </td>
             </tr>
           ))}
@@ -877,6 +882,7 @@ function OrderDetail({
               <DetailField label="Type tømming" value={order.tomming_type} />
               <DetailField label="Adresse" value={order.adresse} />
               <DetailField label="Gnr/Bnr" value={order.gnr && order.bnr ? `${order.gnr}/${order.bnr}` : "–"} />
+              <DetailField label="Tankstørrelse" value={order.tank_storrelse_m3 != null ? `${order.tank_storrelse_m3} m³` : "–"} />
               <DetailField label="Opprettet" value={new Date(order.created_at).toLocaleString("nb-NO")} />
               <DetailField label="Oppdatert" value={new Date(order.updated_at).toLocaleString("nb-NO")} />
             </div>
