@@ -449,6 +449,7 @@ function TableView({
               </select>
             </th>
             <th className={thClass}>Tømming</th>
+            <th className={thClass}>m³</th>
             <th className={thClass}>Navn</th>
             <th className={thClass}>Tlf</th>
             <th className={thClass}>Adresse</th>
@@ -477,6 +478,9 @@ function TableView({
                 title={o.tomming_type}
               >
                 {o.tomming_type}
+              </td>
+              <td className="px-3 py-2.5 text-muted-foreground text-xs">
+                {o.tank_storrelse_m3 != null ? `${o.tank_storrelse_m3}` : "–"}
               </td>
               <td className="px-3 py-2.5 font-medium">{o.navn}</td>
               <td className="px-3 py-2.5 text-muted-foreground">{o.telefon}</td>
