@@ -17,8 +17,16 @@
   --color-error: #e54444;
   --color-warning: #f59e0b;
   --color-info: #1d4ed8;
+  --color-navy: #1B3A6B;
+  --color-navy-dark: #142d54;
+  --color-navy-mid: #2d5a9e;
+  --color-navy-soft: #eef2f7;
+  --color-red: #E8321E;
+  --color-red-dark: #c42812;
   --font-sans: var(--font-dm-sans);
   --font-heading: var(--font-dm-sans);
+  --font-serif: var(--font-playfair);
+  --font-mono: var(--font-dm-mono);
 }
 
 body {
