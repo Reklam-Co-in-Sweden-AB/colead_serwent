@@ -17,6 +17,7 @@ export interface Order {
   status: OrderStatus
   colead_synced: boolean
   colead_lead_id: string | null
+  planlagt_dato: string | null
   created_at: string
   updated_at: string
 }

@@ -890,6 +890,9 @@ function OrderDetail({
               <DetailField label="Adresse" value={order.adresse} />
               <DetailField label="Gnr/Bnr" value={order.gnr && order.bnr ? `${order.gnr}/${order.bnr}` : "–"} />
               <DetailField label="Tankstørrelse" value={order.tank_storrelse_m3 != null ? `${order.tank_storrelse_m3} m³` : "–"} />
+              {order.planlagt_dato && (
+                <DetailField label="Planlagt tømming" value={new Date(order.planlagt_dato).toLocaleDateString("nb-NO")} />
+              )}
               <DetailField label="Opprettet" value={new Date(order.created_at).toLocaleString("nb-NO")} />
               <DetailField label="Oppdatert" value={new Date(order.updated_at).toLocaleString("nb-NO")} />
             </div>
