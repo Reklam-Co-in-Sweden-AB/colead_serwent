@@ -56,23 +56,28 @@ export async function sendMetaConversion(data: MetaConversionData) {
 // ===== GOOGLE ADS OFFLINE CONVERSIONS =====
 
 export async function sendGoogleConversion(gclid: string) {
-  const conversionId = process.env.GOOGLE_CONVERSION_ID
-  const conversionLabel = process.env.GOOGLE_CONVERSION_LABEL
-  if (!conversionId || !conversionLabel || !gclid) return
+  // Stödjer flera konton: GOOGLE_CONVERSION_ID=AW-111,AW-222
+  const ids = (process.env.GOOGLE_CONVERSION_ID || "").split(",").map(s => s.trim()).filter(Boolean)
+  const labels = (process.env.GOOGLE_CONVERSION_LABEL || "").split(",").map(s => s.trim()).filter(Boolean)
+  if (ids.length === 0 || labels.length === 0 || !gclid) return
 
-  try {
-    const params = new URLSearchParams({
-      v: "1",
-      tid: conversionId,
-      cid: "server",
-      t: "event",
-      ec: "conversion",
-      ea: conversionLabel,
-      el: gclid,
-    })
-    await fetch(`https://www.google-analytics.com/collect?${params.toString()}`)
-  } catch (err) {
-    console.error("[Google Ads]", err)
+  for (let i = 0; i < ids.length; i++) {
+    const conversionId = ids[i]
+    const conversionLabel = labels[i] || labels[0] // Fallback till första label
+    try {
+      const params = new URLSearchParams({
+        v: "1",
+        tid: conversionId,
+        cid: "server",
+        t: "event",
+        ec: "conversion",
+        ea: conversionLabel,
+        el: gclid,
+      })
+      await fetch(`https://www.google-analytics.com/collect?${params.toString()}`)
+    } catch (err) {
+      console.error(`[Google Ads ${conversionId}]`, err)
+    }
   }
 }
 

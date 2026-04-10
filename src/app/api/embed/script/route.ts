@@ -62,11 +62,13 @@ export async function GET(request: NextRequest) {
             event_label: data.order_id || ''
           });
         }
-        // Google Ads
-        if (typeof gtag === 'function' && window.serwentGoogleConversionId) {
-          gtag('event', 'conversion', {
-            send_to: window.serwentGoogleConversionId
+        // Google Ads — stödjer flera konton
+        if (typeof gtag === 'function' && window.serwentGoogleConversionIds) {
+          window.serwentGoogleConversionIds.forEach(function(id) {
+            gtag('event', 'conversion', { send_to: id });
           });
+        } else if (typeof gtag === 'function' && window.serwentGoogleConversionId) {
+          gtag('event', 'conversion', { send_to: window.serwentGoogleConversionId });
         }
         // Egen händelse som kunden kan lyssna på
         window.dispatchEvent(new CustomEvent('serwent:conversion', { detail: data }));
