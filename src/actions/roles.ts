@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export type UserRole = "bruker" | "admin" | "super_admin"
 
@@ -10,7 +11,9 @@ export async function getUserRole(): Promise<UserRole> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return "bruker"
 
-  const { data } = await supabase
+  // Använd admin-klient för att undvika RLS-problem
+  const admin = createAdminClient()
+  const { data } = await admin
     .from("serwent_profiles")
     .select("role")
     .eq("id", user.id)
