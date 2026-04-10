@@ -20,6 +20,41 @@ export function DynamicForm({ form }: DynamicFormProps) {
 
   const formRef = useRef<HTMLDivElement>(null)
 
+  // Fånga UTM-parametrar och klick-ID:n från URL (parent eller iframe)
+  const trackingRef = useRef<{
+    utm_source?: string
+    utm_medium?: string
+    utm_campaign?: string
+    fbclid?: string
+    gclid?: string
+    referrer?: string
+    session_id?: string
+  }>({})
+
+  useEffect(() => {
+    // Hämta parametrar från parent (iframe) eller egen URL
+    const params = new URLSearchParams(window.location.search)
+    trackingRef.current = {
+      utm_source: params.get("utm_source") || undefined,
+      utm_medium: params.get("utm_medium") || undefined,
+      utm_campaign: params.get("utm_campaign") || undefined,
+      fbclid: params.get("fbclid") || undefined,
+      gclid: params.get("gclid") || undefined,
+      referrer: document.referrer || undefined,
+      session_id: getSessionId(),
+    }
+
+    // Spåra formulärvisning
+    fetch("/api/tracking/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        form_id: form.id,
+        ...trackingRef.current,
+      }),
+    }).catch(() => {})
+  }, [form.id])
+
   // Skicka resize-meddelande till parent (för iframe-inbäddning)
   useEffect(() => {
     const sendHeight = () => {
@@ -105,6 +140,11 @@ export function DynamicForm({ form }: DynamicFormProps) {
           ...mappedData,
           form_id: form.id,
           form_data: formData,
+          // Koordinater från Kartverket
+          lat: formData._lat ? parseFloat(formData._lat) : null,
+          lng: formData._lng ? parseFloat(formData._lng) : null,
+          // Tracking-data
+          ...trackingRef.current,
         }),
       })
 
@@ -128,6 +168,18 @@ export function DynamicForm({ form }: DynamicFormProps) {
       setOrderId(data.order_id)
       setOrderEmail(data.epost || mappedData.epost || "")
       setSubmitted(true)
+
+      // Meddela parent (serwent.no) om konvertering för client-side pixlar
+      if (window.parent !== window) {
+        window.parent.postMessage(
+          JSON.stringify({
+            type: "serwent-conversion",
+            event: "Lead",
+            order_id: data.order_id,
+          }),
+          "*"
+        )
+      }
     } catch {
       setErrors({ _form: "Noe gikk galt. Prøv igjen." })
     }
@@ -245,7 +297,7 @@ export function DynamicForm({ form }: DynamicFormProps) {
               value={formData[field.id] || ""}
               error={errors[field.id]}
               onChange={(val) => update(field.id, val)}
-              onAddressChange={(adresse, gnr, bnr) => {
+              onAddressChange={(adresse, gnr, bnr, lat, lng) => {
                 // Find gnr/bnr fields by mapping
                 const allFields = steps.flatMap((s) => s.form_fields)
                 const gnrField = allFields.find((f) => f.mapping === "gnr")
@@ -253,6 +305,10 @@ export function DynamicForm({ form }: DynamicFormProps) {
                 update(field.id, adresse)
                 if (gnrField) update(gnrField.id, gnr)
                 if (bnrField) update(bnrField.id, bnr)
+                // Spara koordinater för kartvisning
+                if (lat && lng) {
+                  setFormData((d) => ({ ...d, _lat: String(lat), _lng: String(lng) }))
+                }
               }}
             />
           ))}
@@ -298,7 +354,7 @@ function FieldRenderer({
   value: string
   error?: string
   onChange: (val: string) => void
-  onAddressChange?: (adresse: string, gnr: string, bnr: string) => void
+  onAddressChange?: (adresse: string, gnr: string, bnr: string, lat?: number | null, lng?: number | null) => void
 }) {
   // Address lookup — special field type
   if (field.field_type === "address_lookup") {
@@ -306,7 +362,7 @@ function FieldRenderer({
       <div className="sm:col-span-2">
         <AddressLookup
           value={value}
-          onChange={(adresse, gnr, bnr) => onAddressChange?.(adresse, gnr, bnr)}
+          onChange={(adresse, gnr, bnr, lat, lng) => onAddressChange?.(adresse, gnr, bnr, lat, lng)}
           error={error}
         />
       </div>
@@ -442,4 +498,15 @@ function FieldRenderer({
       {error && <span className="text-error text-xs">{error}</span>}
     </div>
   )
+}
+
+// Session-ID för att koppla visning till konvertering
+function getSessionId(): string {
+  if (typeof window === "undefined") return ""
+  let sid = sessionStorage.getItem("serwent_sid")
+  if (!sid) {
+    sid = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    sessionStorage.setItem("serwent_sid", sid)
+  }
+  return sid
 }

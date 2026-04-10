@@ -7,7 +7,6 @@ import {
   STATUS_LABELS,
   STATUS_COLORS,
   ORDER_STATUSES,
-  KOMMUNER,
   type OrderStatus,
 } from "@/lib/constants"
 import type { Order } from "@/types/database"
@@ -26,9 +25,10 @@ type OrderMessage = {
 
 interface AdminPanelProps {
   initialOrders: Order[]
+  kommuner: string[]
 }
 
-export function AdminPanel({ initialOrders }: AdminPanelProps) {
+export function AdminPanel({ initialOrders, kommuner }: AdminPanelProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [filter, setFilter] = useState<OrderStatus | "alle">("alle")
   const [kommuneFilter, setKommuneFilter] = useState("")
@@ -292,6 +292,7 @@ export function AdminPanel({ initialOrders }: AdminPanelProps) {
           onTypeFilterChange={setTypeFilter}
           kommuneFilter={kommuneFilter}
           onKommuneFilterChange={setKommuneFilter}
+          kommuner={kommuner}
         />
       ) : view === "kanban" ? (
         <KanbanView
@@ -406,6 +407,7 @@ function TableView({
   onTypeFilterChange,
   kommuneFilter,
   onKommuneFilterChange,
+  kommuner,
 }: {
   orders: Order[]
   getOrderType: (o: Order) => string
@@ -415,6 +417,7 @@ function TableView({
   onTypeFilterChange: (v: string) => void
   kommuneFilter: string
   onKommuneFilterChange: (v: string) => void
+  kommuner: string[]
 }) {
   const thClass = "px-3 py-2.5 text-white font-semibold text-left text-xs uppercase tracking-wider whitespace-nowrap"
   const filterSelectClass = "bg-white/15 text-white text-xs font-semibold rounded px-1.5 py-1 border border-white/30 cursor-pointer outline-none [&>option]:text-dark [&>option]:bg-white"
@@ -443,7 +446,7 @@ function TableView({
                 className={filterSelectClass}
               >
                 <option value="">Kommune ▾</option>
-                {KOMMUNER.map((k) => (
+                {kommuner.map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
               </select>

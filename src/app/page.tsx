@@ -2,13 +2,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { DynamicForm } from "@/components/order/DynamicForm"
 import { getPublishedForm } from "@/actions/forms"
 import { OrderForm } from "@/components/order/OrderForm"
-import { getSettings } from "@/actions/settings"
+import { getSettings, getKommuner } from "@/actions/settings"
 
 export default async function Home() {
-  // Hämta formulär och design-inställningar
-  const [form, settings] = await Promise.all([
+  // Hämta formulär, design-inställningar och kommuner
+  const [form, settings, kommuner] = await Promise.all([
     getPublishedForm("bestilling"),
     getSettings(),
+    getKommuner(),
   ])
 
   return (
@@ -56,7 +57,7 @@ export default async function Home() {
       <div className="max-w-[1100px] mx-auto py-8 px-4 sm:px-8">
         <Card>
           <CardContent className="p-6 sm:p-10">
-            {form ? <DynamicForm form={form} /> : <OrderForm />}
+            {form ? <DynamicForm form={form} /> : <OrderForm kommuner={kommuner} />}
           </CardContent>
         </Card>
       </div>

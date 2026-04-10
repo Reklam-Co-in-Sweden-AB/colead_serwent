@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { KOMMUNER, TØMMINGER } from "@/lib/constants"
+import { TØMMINGER } from "@/lib/constants"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,11 @@ const EMPTY_FORM: FormData = {
   kommentar: "",
 }
 
-export function OrderForm() {
+interface OrderFormProps {
+  kommuner?: string[]
+}
+
+export function OrderForm({ kommuner = [] }: OrderFormProps) {
   const [form, setForm] = useState<FormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
@@ -156,7 +160,7 @@ export function OrderForm() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <Select
           label="Kommune"
-          options={KOMMUNER}
+          options={kommuner}
           value={form.kommune}
           onChange={(e) => update("kommune", e.target.value)}
           error={errors.kommune}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/order/Sidebar"
 import { logout } from "@/actions/auth"
 import { getSettings } from "@/actions/settings"
+import { getUserRole } from "@/actions/roles"
 
 export default async function AdminLayout({
   children,
@@ -13,7 +14,10 @@ export default async function AdminLayout({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const settings = await getSettings()
+  const [settings, userRole] = await Promise.all([
+    getSettings(),
+    getUserRole(),
+  ])
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,7 +54,7 @@ export default async function AdminLayout({
 
       {/* Body */}
       <div className="flex">
-        <Sidebar />
+        <Sidebar userRole={userRole} />
         <main className="flex-1 p-6 sm:p-8 min-h-[calc(100vh-64px)]">
           {children}
         </main>

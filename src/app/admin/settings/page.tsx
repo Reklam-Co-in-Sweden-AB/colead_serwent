@@ -2,10 +2,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DesignSettings } from "@/components/settings/DesignSettings"
 import { ChangePassword } from "@/components/settings/ChangePassword"
-import { getSettings } from "@/actions/settings"
+import { KommuneManager } from "@/components/settings/KommuneManager"
+import { getSettings, getKommuner } from "@/actions/settings"
 
 export default async function SettingsPage() {
-  const settings = await getSettings()
+  const [settings, kommuner] = await Promise.all([
+    getSettings(),
+    getKommuner(),
+  ])
 
   const hasElks = !!(process.env.ELKS_API_USER && process.env.ELKS_API_PASSWORD)
   const hasResend = !!process.env.RESEND_API_KEY
@@ -37,6 +41,20 @@ export default async function SettingsPage() {
 
         <hr className="border-border" />
 
+        {/* Kommuner */}
+        <div>
+          <h2 className="text-dark text-lg font-bold mb-4 flex items-center gap-2">
+            <svg className="w-5 h-5 text-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+            Kommuner
+          </h2>
+          <KommuneManager initialKommuner={kommuner} />
+        </div>
+
+        <hr className="border-border" />
+
         {/* Endre passord (eget) */}
         <Card>
           <CardContent className="p-6">
@@ -45,6 +63,86 @@ export default async function SettingsPage() {
               Oppdater passordet for din brukerkonto.
             </p>
             <ChangePassword />
+          </CardContent>
+        </Card>
+
+        <hr className="border-border" />
+
+        {/* Konverteringsspårning */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-dark text-lg font-bold">Konverteringssporing</h3>
+              <Badge variant={!!(process.env.META_PIXEL_ID || process.env.GA_MEASUREMENT_ID) ? "success" : "default"}>
+                {!!(process.env.META_PIXEL_ID || process.env.GA_MEASUREMENT_ID) ? "Aktiv" : "Ikke konfigurert"}
+              </Badge>
+            </div>
+            <p className="text-muted text-sm mb-4">
+              Sporer formulærvisninger og bestillinger via Meta Pixel og Google Analytics.
+              Fungerer automatisk i iframe — konverteringer sendes til parent-sidens pixler via postMessage.
+            </p>
+            <div className="flex flex-col gap-3 max-w-lg">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-dark uppercase tracking-wider">Meta Pixel ID</label>
+                  <Badge variant={!!process.env.META_PIXEL_ID ? "success" : "default"}>
+                    {!!process.env.META_PIXEL_ID ? "Satt" : "Mangler"}
+                  </Badge>
+                </div>
+                <input
+                  value={process.env.META_PIXEL_ID ? "********" : ""}
+                  readOnly
+                  placeholder="Ikke konfigurert"
+                  className="border-2 border-border rounded-md px-3 py-2 text-sm bg-background text-muted"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-dark uppercase tracking-wider">Meta Access Token (CAPI)</label>
+                  <Badge variant={!!process.env.META_ACCESS_TOKEN ? "success" : "default"}>
+                    {!!process.env.META_ACCESS_TOKEN ? "Satt" : "Mangler"}
+                  </Badge>
+                </div>
+                <input
+                  value={process.env.META_ACCESS_TOKEN ? "********" : ""}
+                  readOnly
+                  placeholder="Ikke konfigurert"
+                  className="border-2 border-border rounded-md px-3 py-2 text-sm bg-background text-muted"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-dark uppercase tracking-wider">Google Analytics (GA4)</label>
+                  <Badge variant={!!process.env.GA_MEASUREMENT_ID ? "success" : "default"}>
+                    {!!process.env.GA_MEASUREMENT_ID ? "Satt" : "Mangler"}
+                  </Badge>
+                </div>
+                <input
+                  value={process.env.GA_MEASUREMENT_ID || ""}
+                  readOnly
+                  placeholder="Ikke konfigurert (G-XXXXXXXXXX)"
+                  className="border-2 border-border rounded-md px-3 py-2 text-sm bg-background text-muted"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-dark uppercase tracking-wider">Google Ads Conversion ID</label>
+                  <Badge variant={!!process.env.GOOGLE_CONVERSION_ID ? "success" : "default"}>
+                    {!!process.env.GOOGLE_CONVERSION_ID ? "Satt" : "Mangler"}
+                  </Badge>
+                </div>
+                <input
+                  value={process.env.GOOGLE_CONVERSION_ID || ""}
+                  readOnly
+                  placeholder="Ikke konfigurert"
+                  className="border-2 border-border rounded-md px-3 py-2 text-sm bg-background text-muted"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted mt-3">
+              Konfigureres via miljøvariabler. Server-side (Meta CAPI): META_PIXEL_ID, META_ACCESS_TOKEN.
+              Client-side pixler installeres på serwent.no — iframe sender postMessage ved konvertering.
+            </p>
           </CardContent>
         </Card>
 
@@ -241,6 +339,11 @@ export default async function SettingsPage() {
                 </thead>
                 <tbody className="text-xs">
                   {[
+                    { key: "META_PIXEL_ID", desc: "Meta Pixel ID (server-side CAPI)", set: !!process.env.META_PIXEL_ID },
+                    { key: "META_ACCESS_TOKEN", desc: "Meta Conversions API token", set: !!process.env.META_ACCESS_TOKEN },
+                    { key: "GA_MEASUREMENT_ID", desc: "Google Analytics 4 Measurement ID", set: !!process.env.GA_MEASUREMENT_ID },
+                    { key: "GOOGLE_CONVERSION_ID", desc: "Google Ads Conversion ID", set: !!process.env.GOOGLE_CONVERSION_ID },
+                    { key: "GOOGLE_CONVERSION_LABEL", desc: "Google Ads Conversion Label", set: !!process.env.GOOGLE_CONVERSION_LABEL },
                     { key: "ELKS_API_USER", desc: "46elks API-bruker", set: !!process.env.ELKS_API_USER },
                     { key: "ELKS_API_PASSWORD", desc: "46elks API-passord", set: !!process.env.ELKS_API_PASSWORD },
                     { key: "RESEND_API_KEY", desc: "Resend API-nøkkel", set: !!process.env.RESEND_API_KEY },

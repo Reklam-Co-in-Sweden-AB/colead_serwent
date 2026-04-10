@@ -11,11 +11,13 @@ interface AddressSuggestion {
   gardsnummer: number
   bruksnummer: number
   kommunenavn: string
+  lat: number | null
+  lng: number | null
 }
 
 interface AddressLookupProps {
   value: string
-  onChange: (adresse: string, gnr: string, bnr: string) => void
+  onChange: (adresse: string, gnr: string, bnr: string, lat?: number | null, lng?: number | null) => void
   error?: string
 }
 
@@ -46,7 +48,7 @@ export function AddressLookup({ value, onChange, error }: AddressLookupProps) {
   const handleInput = (val: string) => {
     setQuery(val)
     setConfirmed(false)
-    onChange(val, "", "")
+    onChange(val, "", "", null, null)
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => lookup(val), 350)
   }
@@ -64,7 +66,7 @@ export function AddressLookup({ value, onChange, error }: AddressLookupProps) {
     setConfirmed(true)
     setSuggestions([])
     setShowSuggestions(false)
-    onChange(fullAddress, String(adr.gardsnummer ?? ""), String(adr.bruksnummer ?? ""))
+    onChange(fullAddress, String(adr.gardsnummer ?? ""), String(adr.bruksnummer ?? ""), adr.lat, adr.lng)
   }
 
   // Close dropdown on outside click

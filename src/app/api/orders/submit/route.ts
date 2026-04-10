@@ -4,6 +4,7 @@ import { syncToCoLead } from "@/lib/colead"
 import { rateLimit } from "@/lib/rate-limit"
 import { runAutomations } from "@/lib/automations"
 import { notifyNewOrder } from "@/lib/messaging"
+import { trackConversion } from "@/lib/tracking"
 
 function generateOrderId(): string {
   return (
@@ -31,6 +32,11 @@ export async function POST(request: NextRequest) {
       kommune, tomming_type, navn, epost, telefon,
       adresse, gnr, bnr, kommentar, tank_storrelse_m3,
       form_id,
+      // Koordinater
+      lat, lng,
+      // Tracking-data
+      session_id, utm_source, utm_medium, utm_campaign,
+      referrer, fbclid, gclid,
     } = body
 
     // Validate core fields (mapped from dynamic form or hardcoded)
@@ -60,6 +66,8 @@ export async function POST(request: NextRequest) {
       kommentar: kommentar?.trim() || null,
       tank_storrelse_m3: tank_storrelse_m3 ? parseFloat(tank_storrelse_m3) : null,
       status: "ny",
+      lat: lat || null,
+      lng: lng || null,
     }
 
     if (form_id) {
@@ -82,6 +90,18 @@ export async function POST(request: NextRequest) {
 
     // Vänta på sidoeffekter innan svaret skickas (krävs på Vercel serverless)
     await Promise.allSettled([
+      trackConversion({
+        orderId,
+        sessionId: session_id,
+        utmSource: utm_source,
+        utmMedium: utm_medium,
+        utmCampaign: utm_campaign,
+        referrer,
+        fbclid,
+        gclid,
+        email: epost?.trim()?.toLowerCase(),
+        phone: telefon?.trim(),
+      }),
       syncToCoLead({
         kommune: kommune?.trim() || "",
         tomming_type: tomming_type?.trim() || "",
@@ -107,7 +127,7 @@ export async function POST(request: NextRequest) {
     ]).then((results) => {
       results.forEach((r, i) => {
         if (r.status === "rejected") {
-          const labels = ["CoLead", "Automationer", "Admin-varsel"]
+          const labels = ["Konvertering", "CoLead", "Automationer", "Admin-varsel"]
           console.error(`[Submit] ${labels[i]} feilet:`, r.reason)
         }
       })

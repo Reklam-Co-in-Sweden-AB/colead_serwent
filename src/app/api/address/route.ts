@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         gardsnummer: number
         bruksnummer: number
         kommunenavn: string
+        representasjonspunkt?: { lat: number; lon: number }
       }) => ({
         adressenavn: adr.adressenavn,
         nummer: adr.nummer,
@@ -55,6 +56,8 @@ export async function GET(request: NextRequest) {
         gardsnummer: adr.gardsnummer,
         bruksnummer: adr.bruksnummer,
         kommunenavn: adr.kommunenavn,
+        lat: adr.representasjonspunkt?.lat || null,
+        lng: adr.representasjonspunkt?.lon || null,
       })
     )
 

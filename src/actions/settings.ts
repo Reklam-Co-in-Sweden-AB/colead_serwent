@@ -126,6 +126,48 @@ export async function saveInfoBox(text: string) {
   return { success: true }
 }
 
+// Hämta kommunlistan — från site_settings, faller tillbaka på standardlistan
+export async function getKommuner(): Promise<string[]> {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", "kommuner")
+    .single()
+
+  if (data?.value && Array.isArray((data.value as { list: string[] }).list)) {
+    return (data.value as { list: string[] }).list
+  }
+
+  // Standardlista om inget finns i databasen
+  return [
+    "Vestre Toten", "Østre Toten", "Nordre Land", "Søndre Land",
+    "Stange", "Lillehammer", "Gjøvik", "Gausdal", "Øyer",
+  ]
+}
+
+// Spara kommunlistan
+export async function saveKommuner(kommuner: string[]) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("site_settings")
+    .upsert(
+      { key: "kommuner", value: { list: kommuner } },
+      { onConflict: "key" }
+    )
+
+  if (error) {
+    console.error("[saveKommuner] Error:", error)
+    return { error: "Kunne ikke lagre kommuner" }
+  }
+
+  revalidatePath("/")
+  revalidatePath("/admin")
+  return { success: true }
+}
+
 export async function removeLogo() {
   const supabase = await createClient()
 
