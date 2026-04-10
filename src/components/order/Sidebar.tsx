@@ -69,7 +69,7 @@ const NAV_ITEMS: {
   {
     label: "Produksjon",
     href: "/admin/produksjon",
-    minRole: "super_admin" as UserRole,
+    minRole: "admin" as UserRole,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h2v8H3zM8 9h2v12H8zM13 5h2v16h-2zM18 1h2v20h-2z" />
@@ -79,7 +79,7 @@ const NAV_ITEMS: {
   {
     label: "Ruteplan",
     href: "/admin/ruteplan",
-    minRole: "super_admin" as UserRole,
+    minRole: "admin" as UserRole,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -100,7 +100,7 @@ const NAV_ITEMS: {
   {
     label: "Komtek-import",
     href: "/admin/komtek",
-    minRole: "super_admin" as UserRole,
+    minRole: "admin" as UserRole,
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
