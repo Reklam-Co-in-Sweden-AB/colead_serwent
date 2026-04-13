@@ -278,11 +278,7 @@ export function AdminPanel({ initialOrders, kommuner }: AdminPanelProps) {
       />
 
       {/* Views */}
-      {filtered.length === 0 ? (
-        <div className="text-center text-muted py-10 text-sm">
-          Ingen bestillinger funnet
-        </div>
-      ) : view === "table" ? (
+      {view === "table" ? (
         <TableView
           orders={filtered}
           getOrderType={getOrderType}
@@ -461,7 +457,13 @@ function TableView({
           </tr>
         </thead>
         <tbody>
-          {orders.map((o, i) => (
+          {orders.length === 0 ? (
+            <tr>
+              <td colSpan={10} className="text-center text-muted py-10 text-sm">
+                Ingen bestillinger funnet
+              </td>
+            </tr>
+          ) : orders.map((o, i) => (
             <tr
               key={o.id}
               onClick={() => onOrderClick(o)}
@@ -660,6 +662,11 @@ function ListView({
 }) {
   return (
     <div className="flex flex-col gap-2">
+      {orders.length === 0 && (
+        <div className="text-center text-muted py-10 text-sm">
+          Ingen bestillinger funnet
+        </div>
+      )}
       {orders.map((o) => (
         <div
           key={o.id}
