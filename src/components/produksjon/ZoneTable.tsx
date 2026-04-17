@@ -12,7 +12,8 @@ interface Props {
 }
 
 export function ZoneTable({ data, aar, uke, totalBestilling }: Props) {
-  const activeData = data.filter((d) => d.planlagt > 0)
+  // Visa zoner som antingen har planlagt arbete eller faktiska tömninger den här veckan
+  const activeData = data.filter((d) => d.planlagt > 0 || d.kjort_rute > 0)
 
   const [values, setValues] = useState(() => buildValues(activeData, totalBestilling))
   const [isPending, startTransition] = useTransition()
@@ -67,7 +68,17 @@ export function ZoneTable({ data, aar, uke, totalBestilling }: Props) {
     planned > 0 ? Math.round((done / planned) * 100) : done > 0 ? 100 : 0
 
   const getStatusBadge = (planned: number, done: number) => {
-    if (planned === 0) return null
+    if (planned === 0) {
+      if (done <= 0) return null
+      return (
+        <span
+          className="px-2 py-0.5 rounded text-[10px] font-bold font-mono"
+          style={{ background: "rgba(245,158,11,0.1)", color: "#92400e", border: "1px solid rgba(245,158,11,0.3)" }}
+        >
+          Uplanlagt
+        </span>
+      )
+    }
     const pct = getPercent(planned, done)
     if (pct >= 100)
       return (
@@ -130,6 +141,9 @@ export function ZoneTable({ data, aar, uke, totalBestilling }: Props) {
           {activeData.map((d) => {
             const kjort = values[d.sone.id]?.kjort_rute ?? 0
             const pct = getPercent(d.planlagt, kjort)
+            // Utan plan finns ingen övre gräns — tillåt alla positiva värden
+            const hasPlan = d.planlagt > 0
+            const incrementDisabled = hasPlan && kjort >= d.planlagt
             return (
               <tr key={d.sone.id} className="border-b border-border hover:bg-navy-soft/50">
                 <td className="px-3.5 py-2.5 text-xs">
@@ -142,7 +156,7 @@ export function ZoneTable({ data, aar, uke, totalBestilling }: Props) {
                   </span>
                 </td>
                 <td className="text-right px-3.5 py-2.5 text-xs font-mono font-semibold" style={{ color: "var(--color-navy)" }}>
-                  {d.planlagt}
+                  {hasPlan ? d.planlagt : <span className="text-muted">—</span>}
                 </td>
                 <td className="text-center px-3.5 py-2.5">
                   <div className="inline-flex items-center gap-0">
@@ -157,18 +171,19 @@ export function ZoneTable({ data, aar, uke, totalBestilling }: Props) {
                     <input
                       type="number"
                       min={0}
-                      max={d.planlagt}
+                      max={hasPlan ? d.planlagt : undefined}
                       value={kjort}
                       onChange={(e) => {
                         const val = parseInt(e.target.value) || 0
-                        updateValue(d.sone.id, "kjort_rute", Math.min(val, d.planlagt))
+                        const capped = hasPlan ? Math.min(val, d.planlagt) : val
+                        updateValue(d.sone.id, "kjort_rute", Math.max(0, capped))
                       }}
                       className="w-12 h-7 text-center border-y border-border text-xs font-mono font-semibold focus:outline-none focus:border-navy"
                       style={{ color: "var(--color-navy)", background: "#f8fafc" }}
                     />
                     <button
-                      onClick={() => updateValue(d.sone.id, "kjort_rute", Math.min(d.planlagt, kjort + 1))}
-                      disabled={kjort >= d.planlagt}
+                      onClick={() => updateValue(d.sone.id, "kjort_rute", hasPlan ? Math.min(d.planlagt, kjort + 1) : kjort + 1)}
+                      disabled={incrementDisabled}
                       className="w-7 h-7 rounded-r-md border border-l-0 border-border text-xs font-bold cursor-pointer transition-colors hover:bg-border/30 disabled:opacity-30 disabled:cursor-default bg-white"
                       style={{ color: "var(--color-navy)" }}
                     >
@@ -306,7 +321,9 @@ function buildValues(
 ): Record<string, { kjort_rute: number; kjort_best: number }> {
   const map: Record<string, { kjort_rute: number; kjort_best: number }> = {}
   for (const d of activeData) {
-    map[d.sone.id] = { kjort_rute: Math.min(d.kjort_rute, d.planlagt), kjort_best: d.kjort_best }
+    // Klamp bara om vi har en plan — annars (t.ex. import utan plan) visa råa antalet
+    const kjort = d.planlagt > 0 ? Math.min(d.kjort_rute, d.planlagt) : d.kjort_rute
+    map[d.sone.id] = { kjort_rute: kjort, kjort_best: d.kjort_best }
   }
   map["__bestilling__"] = { kjort_rute: 0, kjort_best: totalBestilling }
   return map

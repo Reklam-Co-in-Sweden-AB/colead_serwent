@@ -6,7 +6,7 @@ import { HistoryPanel } from "@/components/produksjon/HistoryPanel"
 import { ZoneReportTab } from "@/components/produksjon/ZoneReportTab"
 import { ZoneAdminTab } from "@/components/produksjon/ZoneAdminTab"
 import { PublishButton } from "@/components/produksjon/PublishButton"
-import { copyPreviousYear, resetRuteplan } from "@/actions/ruteplan"
+import { copyPreviousYear, resetRuteplan, deleteFullRuteplan } from "@/actions/ruteplan"
 import { TommingPanel } from "@/components/produksjon/TommingPanel"
 import type { Sone, Ruteplan, Produksjon } from "@/types/produksjon"
 import { useTransition } from "react"
@@ -50,16 +50,36 @@ export function RuteplanTabs({
   const [isPending, startTransition] = useTransition()
 
   const handleCopyPrev = () => {
-    if (!confirm(`Kopiere planen fra ${aar - 1} til ${aar}?`)) return
+    if (!confirm(`Kopiere planen fra ${aar - 1} til ${aar} for ${kommune}?\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
     startTransition(async () => {
       await copyPreviousYear(kommune, aar - 1, aar, kapasitet)
     })
   }
 
   const handleReset = () => {
-    if (!confirm(`Nullstille alle utkast for ${kommune} ${aar}?`)) return
+    if (!confirm(`Nullstille alle UTKAST i ruteplanen for ${kommune} år ${aar}?\n\nKun upubliserte endringer fjernes. Publiserte planer blir værende.\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
     startTransition(async () => {
       await resetRuteplan(kommune, aar)
+    })
+  }
+
+  const handleDeleteAll = () => {
+    const typed = prompt(
+      `ADVARSEL: Dette sletter HELE ruteplanen for ${kommune} år ${aar} — både utkast og publisert.\n\nFaktiske tømminger (Komtek-import) blir værende, men plandata forsvinner permanent.\n\nSkriv inn årstallet (${aar}) for å bekrefte:`
+    )
+    if (typed === null) return
+    const confirmAar = parseInt(typed.trim(), 10)
+    if (confirmAar !== aar) {
+      alert("Årstallet stemmer ikke. Sletting avbrutt.")
+      return
+    }
+    startTransition(async () => {
+      const res = await deleteFullRuteplan(kommune, aar, confirmAar)
+      if (res.error) {
+        alert(`Feil: ${res.error}`)
+      } else {
+        alert(`Slettet ${res.deleted} rader fra ruteplanen for ${kommune} ${aar}.`)
+      }
     })
   }
 
@@ -116,10 +136,22 @@ export function RuteplanTabs({
               >
                 Nullstill plan
               </button>
+              <button
+                onClick={handleDeleteAll}
+                disabled={isPending}
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold border bg-white cursor-pointer transition-colors disabled:opacity-50"
+                style={{ color: "var(--color-red)", borderColor: "rgba(232,50,30,0.4)" }}
+                title={`Slett HELE ruteplanen for ${aar} (utkast + publisert). Brukes for å rydde testdata.`}
+              >
+                Slett hele året
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 bg-background rounded-lg p-1">
+                <span className="text-[10px] font-semibold text-muted uppercase tracking-wider px-2">
+                  Historikk
+                </span>
                 <button
                   onClick={() => setShowCurrentYear(false)}
                   className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
@@ -127,8 +159,9 @@ export function RuteplanTabs({
                     background: !showCurrentYear ? "var(--color-navy)" : "transparent",
                     color: !showCurrentYear ? "white" : "var(--color-muted)",
                   }}
+                  title={`Vis faktiske tømminger fra ${aar - 1}`}
                 >
-                  {aar - 1} faktisk
+                  {aar - 1}
                 </button>
                 <button
                   onClick={() => setShowCurrentYear(true)}
@@ -137,8 +170,9 @@ export function RuteplanTabs({
                     background: showCurrentYear ? "var(--color-navy)" : "transparent",
                     color: showCurrentYear ? "white" : "var(--color-muted)",
                   }}
+                  title={`Vis faktiske tømminger fra ${aar}`}
                 >
-                  {aar} faktisk
+                  {aar}
                 </button>
               </div>
               <PublishButton kommune={kommune} aar={aar} hasUtkast={hasUtkast} />

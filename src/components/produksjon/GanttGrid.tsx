@@ -331,43 +331,98 @@ export function GanttGrid({
 
       {/* Cell-popup för val av antal */}
       {popup && (
-        <div
+        <CellPopup
           ref={popupRef}
-          className="fixed z-50 bg-white rounded-xl shadow-2xl border border-border p-2"
-          style={{
-            left: Math.min(popup.x - 80, window.innerWidth - 180),
-            top: popup.y,
-          }}
-        >
-          <div className="text-[10px] text-muted font-semibold uppercase tracking-wider px-2 pt-1 pb-2">
-            Uke {popup.uke} — Velg antall
-          </div>
-          <div className="flex gap-1.5">
-            {[30, 40, 50].map((val) => (
-              <button
-                key={val}
-                onClick={() => selectValue(val)}
-                className="w-12 h-10 rounded-lg text-sm font-bold cursor-pointer transition-all border-2"
-                style={{
-                  background: popup.current === val ? "var(--color-navy)" : "white",
-                  color: popup.current === val ? "white" : "var(--color-navy)",
-                  borderColor: popup.current === val ? "var(--color-navy)" : "var(--color-border)",
-                }}
-              >
-                {val}
-              </button>
-            ))}
-          </div>
-          {popup.current > 0 && (
-            <button
-              onClick={() => selectValue(0)}
-              className="w-full mt-1.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors text-error hover:bg-error/5 border border-transparent hover:border-error/20"
-            >
-              Fjern
-            </button>
-          )}
-        </div>
+          uke={popup.uke}
+          x={popup.x}
+          y={popup.y}
+          current={popup.current}
+          onSelect={selectValue}
+        />
       )}
     </div>
   )
 }
+
+const CellPopup = memo(function CellPopup({
+  ref,
+  uke,
+  x,
+  y,
+  current,
+  onSelect,
+}: {
+  ref: React.RefObject<HTMLDivElement | null>
+  uke: number
+  x: number
+  y: number
+  current: number
+  onSelect: (val: number) => void
+}) {
+  const [input, setInput] = useState<string>(current > 0 ? String(current) : "")
+
+  const commit = () => {
+    const val = Math.max(0, Math.floor(Number(input) || 0))
+    onSelect(val)
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="fixed z-50 bg-white rounded-xl shadow-2xl border border-border p-2.5"
+      style={{
+        left: Math.min(x - 90, window.innerWidth - 200),
+        top: y,
+        minWidth: 180,
+      }}
+    >
+      <div className="text-[10px] text-muted font-semibold uppercase tracking-wider px-1 pt-0.5 pb-2">
+        Uke {uke} — Antall tømminger
+      </div>
+      <div className="flex items-center gap-1.5 mb-2">
+        <input
+          type="number"
+          min={0}
+          autoFocus
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit()
+          }}
+          className="flex-1 h-9 px-2 rounded-lg text-sm font-bold font-mono text-center border-2 focus:outline-none focus:border-navy"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-navy)" }}
+        />
+        <button
+          onClick={commit}
+          className="h-9 px-3 rounded-lg text-xs font-bold text-white cursor-pointer transition-colors"
+          style={{ background: "var(--color-navy)" }}
+        >
+          OK
+        </button>
+      </div>
+      <div className="flex gap-1 mb-1">
+        {[5, 10, 20, 30, 50].map((val) => (
+          <button
+            key={val}
+            onClick={() => onSelect(val)}
+            className="flex-1 h-7 rounded-md text-[11px] font-bold cursor-pointer transition-colors border bg-white hover:bg-navy-soft/40"
+            style={{
+              borderColor: current === val ? "var(--color-navy)" : "var(--color-border)",
+              color: "var(--color-navy)",
+            }}
+          >
+            {val}
+          </button>
+        ))}
+      </div>
+      {current > 0 && (
+        <button
+          onClick={() => onSelect(0)}
+          className="w-full mt-1 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors text-error hover:bg-error/5 border border-transparent hover:border-error/20"
+        >
+          Fjern
+        </button>
+      )}
+    </div>
+  )
+})

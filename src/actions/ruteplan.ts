@@ -183,3 +183,40 @@ export async function resetRuteplan(kommune: string, aar: number) {
   revalidatePath("/admin/ruteplan")
   return { success: true }
 }
+
+// Sletter HELE planen för ett år — både utkast og publisert. Brukes f.eks. for å rydde testdata.
+// Krever att kunden bekrefter med årtallet i UI.
+export async function deleteFullRuteplan(kommune: string, aar: number, confirmAar: number) {
+  if (aar !== confirmAar) {
+    return { error: "Bekreftelsen matcher ikke valgt år" }
+  }
+
+  const supabase = await createClient()
+
+  // Hent alle (også inaktive) soner — sletting skal også fange opp historiske rader
+  const { data: soner } = await supabase
+    .from("serwent_soner")
+    .select("id")
+    .eq("kommune", kommune)
+
+  if (!soner || soner.length === 0) {
+    return { error: "Ingen soner funnet" }
+  }
+
+  const soneIds = soner.map((s: { id: string }) => s.id)
+
+  const { error, count } = await supabase
+    .from("serwent_ruteplan")
+    .delete({ count: "exact" })
+    .in("sone_id", soneIds)
+    .eq("aar", aar)
+
+  if (error) {
+    console.error("[deleteFullRuteplan] Error:", error)
+    return { error: "Kunne ikke slette planen" }
+  }
+
+  revalidatePath("/admin/ruteplan")
+  revalidatePath("/admin/produksjon")
+  return { success: true, deleted: count ?? 0 }
+}
