@@ -156,6 +156,8 @@ export async function POST(request: NextRequest) {
   const importId = logEntry?.id || null
 
   // Aggregera: sone_id + år + vecka → antal tömningar
+  // Importen ERSÄTTER tidigare värden för samma sone+vecka (idempotent — körs filen
+  // två gånger blir resultatet samma som vid en körning, inte dubbelt).
   const aggMap = new Map<string, number>()
   let skippedRows = 0
 
@@ -225,6 +227,18 @@ export async function POST(request: NextRequest) {
     })
   }
 
+  // Rensa tidigare tömningsrader (per detalj) för de sone+år+vecka som finns i denna import,
+  // så att en återimport inte dubblerar individuella tömningsposter.
+  for (const key of aggMap.keys()) {
+    const [sId, aStr, uStr] = key.split(":")
+    await supabase
+      .from("serwent_komtek_tomming")
+      .delete()
+      .eq("sone_id", sId)
+      .eq("aar", parseInt(aStr))
+      .eq("uke", parseInt(uStr))
+  }
+
   // Batch-insert enskilda tömningar (50 åt gången)
   const BATCH = 50
   for (let i = 0; i < tommodelRows.length; i += BATCH) {
@@ -250,11 +264,12 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (existing) {
-      // Uppdatera befintlig rad — addera tömningar
+      // Uppdatera befintlig rad — ERSÄTT (importen är auktoritativ, inte additiv).
+      // Tidigare logik adderade vilket dubblerade siffrorna vid återimport.
       const { error } = await supabase
         .from("serwent_produksjon")
         .update({
-          kjort_rute: existing.kjort_rute + count,
+          kjort_rute: count,
           registrert_av: "komtek-import",
           oppdatert: new Date().toISOString(),
         })

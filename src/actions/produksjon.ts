@@ -41,7 +41,6 @@ export async function getProduksjonStats(
     .select("uke, planlagt, serwent_soner!inner(kommune)")
     .eq("serwent_soner.kommune", kommune)
     .eq("aar", aar)
-    .eq("status", "Publisert")
 
   // Hämta produksjonsdata (utförda tömningar)
   const { data: produksjon } = await supabase
@@ -86,7 +85,6 @@ export async function getWeekSummaries(
     .select("uke, planlagt, serwent_soner!inner(kommune)")
     .eq("serwent_soner.kommune", kommune)
     .eq("aar", aar)
-    .eq("status", "Publisert")
 
   const { data: produksjon } = await supabase
     .from("serwent_produksjon")
@@ -137,14 +135,14 @@ export async function getZoneWeekData(
 
   const soneIds = soner.map((s: { id: string }) => s.id)
 
-  // Hämta planerade data för denna vecka
+  // Hämta planerade data för denna vecka (både Utkast och Publisert — Gantt visar
+  // dem likadant och kunden förväntar sig samma siffror i dashboard)
   const { data: plan } = await supabase
     .from("serwent_ruteplan")
     .select("sone_id, planlagt")
     .in("sone_id", soneIds)
     .eq("aar", aar)
     .eq("uke", uke)
-    .eq("status", "Publisert")
 
   // Hämta produksjonsdata för denna vecka
   const { data: prod } = await supabase
@@ -207,7 +205,6 @@ export async function getActiveWeeks(
     .select("uke, serwent_soner!inner(kommune)")
     .eq("serwent_soner.kommune", kommune)
     .eq("aar", aar)
-    .eq("status", "Publisert")
 
   // Hämta bestillingstømminger per vecka
   const { data: bestWeeks } = await supabase

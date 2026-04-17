@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
     .select("sone_id, uke, planlagt")
     .in("sone_id", soneIds)
     .eq("aar", year)
-    .eq("status", "Publisert")
 
   const { data: produksjon } = await supabase
     .from("serwent_produksjon")
