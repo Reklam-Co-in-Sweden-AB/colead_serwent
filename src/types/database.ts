@@ -15,6 +15,8 @@ export interface Order {
   tank_storrelse_m3: number | null
   intern_kommentar: string | null
   status: OrderStatus
+  er_ekstra: boolean
+  ekstra_grunn: string | null
   colead_synced: boolean
   colead_lead_id: string | null
   planlagt_dato: string | null

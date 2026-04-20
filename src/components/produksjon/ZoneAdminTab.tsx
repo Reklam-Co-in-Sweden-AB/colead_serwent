@@ -17,28 +17,45 @@ const ZONE_COLORS = [
 
 export function ZoneAdminTab({ soner, kommune }: Props) {
   const [newName, setNewName] = useState("")
+  const [newGruppe, setNewGruppe] = useState("")
   const [newColor, setNewColor] = useState(ZONE_COLORS[0])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState("")
+  const [editGruppe, setEditGruppe] = useState("")
   const [editColor, setEditColor] = useState("")
   const [isPending, startTransition] = useTransition()
 
+  // Eksisterende grupper for forslag (datalist)
+  const eksisterendeGrupper = Array.from(
+    new Set(soner.map((s) => s.gruppe).filter((g): g is string => Boolean(g)))
+  ).sort()
+
   const handleCreate = () => {
     if (!newName.trim()) return
+    if (!kommune) {
+      alert("Velg én enkelt kommune i toppmenyen før du oppretter en sone.")
+      return
+    }
     startTransition(async () => {
       await createSone({
         kommune,
         navn: newName.trim(),
+        gruppe: newGruppe.trim() || null,
         farge: newColor,
         sort_order: soner.length,
       })
       setNewName("")
+      setNewGruppe("")
     })
   }
 
   const handleUpdate = (id: string) => {
     startTransition(async () => {
-      await updateSone(id, { navn: editName, farge: editColor })
+      await updateSone(id, {
+        navn: editName,
+        gruppe: editGruppe.trim() || null,
+        farge: editColor,
+      })
       setEditingId(null)
     })
   }
@@ -53,6 +70,7 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
   const startEdit = (sone: Sone) => {
     setEditingId(sone.id)
     setEditName(sone.navn)
+    setEditGruppe(sone.gruppe ?? "")
     setEditColor(sone.farge)
   }
 
@@ -72,6 +90,20 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
             className="flex-1 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy"
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           />
+          <input
+            type="text"
+            value={newGruppe}
+            onChange={(e) => setNewGruppe(e.target.value)}
+            placeholder="Gruppe (valgfritt, f.eks. Sone 1)"
+            list="sone-grupper"
+            className="w-56 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-navy"
+            onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+          />
+          <datalist id="sone-grupper">
+            {eksisterendeGrupper.map((g) => (
+              <option key={g} value={g} />
+            ))}
+          </datalist>
           <div className="flex gap-1">
             {ZONE_COLORS.map((c) => (
               <button
@@ -108,6 +140,9 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
               </th>
               <th className="text-left text-[10px] font-bold text-white/70 uppercase tracking-wider px-4 py-2.5">
                 Navn
+              </th>
+              <th className="text-left text-[10px] font-bold text-white/70 uppercase tracking-wider px-4 py-2.5">
+                Gruppe
               </th>
               <th className="text-center text-[10px] font-bold text-white/70 uppercase tracking-wider px-4 py-2.5">
                 Sortering
@@ -154,6 +189,21 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
                     />
                   ) : (
                     <span style={{ color: "var(--color-navy)" }}>{sone.navn}</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-xs font-medium">
+                  {editingId === sone.id ? (
+                    <input
+                      type="text"
+                      value={editGruppe}
+                      onChange={(e) => setEditGruppe(e.target.value)}
+                      placeholder="(ingen)"
+                      list="sone-grupper"
+                      className="px-2 py-1 rounded border border-border text-sm focus:outline-none focus:border-navy w-full"
+                      onKeyDown={(e) => e.key === "Enter" && handleUpdate(sone.id)}
+                    />
+                  ) : (
+                    <span className="text-muted">{sone.gruppe || "—"}</span>
                   )}
                 </td>
                 <td className="text-center px-4 py-2.5 text-xs font-mono text-muted">
@@ -203,7 +253,7 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
             ))}
             {soner.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-center text-sm text-muted py-8">
+                <td colSpan={5} className="text-center text-sm text-muted py-8">
                   Ingen soner opprettet ennå
                 </td>
               </tr>

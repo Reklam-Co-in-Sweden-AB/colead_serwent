@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { getSoneNavnForKommune } from "@/actions/soner"
+import { bestFuzzyMatch } from "@/lib/fuzzy-match"
 
 // Kolumnordning i Komtek-export (A–U)
 const KOMTEK_COLUMNS = [
@@ -81,7 +83,38 @@ export function KomtekImport({ kommuner }: KomtekImportProps) {
   const [result, setResult] = useState<ImportResult | null>(null)
   const [error, setError] = useState("")
   const [dragActive, setDragActive] = useState(false)
+  const [existingSoner, setExistingSoner] = useState<string[]>([])
+  const [confirmUnknown, setConfirmUnknown] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Hent eksisterende sonenavn når kommune velges, for validering av rodenavn
+  useEffect(() => {
+    if (!kommune) {
+      setExistingSoner([])
+      return
+    }
+    let cancelled = false
+    getSoneNavnForKommune(kommune).then((navn) => {
+      if (!cancelled) setExistingSoner(navn)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [kommune])
+
+  // Kategoriser rodenavn i preview: exakt match / fuzzy match / helt nytt
+  const validationResults = soneSummary.map((s) => {
+    const exactMatch = existingSoner.find(
+      (e) => e.toLowerCase() === s.navn.toLowerCase()
+    )
+    if (exactMatch) return { ...s, kind: "exact" as const, match: exactMatch }
+    const fuzzy = bestFuzzyMatch(s.navn, existingSoner, 2)
+    if (fuzzy) return { ...s, kind: "fuzzy" as const, match: fuzzy.match, distance: fuzzy.distance }
+    return { ...s, kind: "new" as const }
+  })
+
+  const harFuzzyTreff = validationResults.some((r) => r.kind === "fuzzy")
+  const harNye = validationResults.some((r) => r.kind === "new")
 
   // Parsa Excel med exceljs (redan installerat)
   const parseFile = useCallback(async (file: File) => {
@@ -276,6 +309,7 @@ export function KomtekImport({ kommuner }: KomtekImportProps) {
     setSoneSummary([])
     setResult(null)
     setError("")
+    setConfirmUnknown(false)
   }
 
   return (
@@ -379,41 +413,76 @@ export function KomtekImport({ kommuner }: KomtekImportProps) {
             </CardContent>
           </Card>
 
-          {/* Soneöversikt */}
+          {/* Soneöversikt med validering */}
           <Card>
             <CardContent className="p-6">
-              <h2 className="text-dark text-lg font-bold mb-4">
-                Soner i filen
-                <span className="text-muted font-normal text-sm ml-2">
-                  ({soneSummary.length} soner)
-                </span>
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-dark text-lg font-bold">
+                  Soner i filen
+                  <span className="text-muted font-normal text-sm ml-2">
+                    ({soneSummary.length} soner)
+                  </span>
+                </h2>
+                {kommune && (harFuzzyTreff || harNye) && (
+                  <Badge variant={harFuzzyTreff ? "warning" : "info"}>
+                    {harFuzzyTreff ? "Sjekk rodenavn!" : "Nye soner vil opprettes"}
+                  </Badge>
+                )}
+              </div>
+
+              {kommune && harFuzzyTreff && (
+                <div className="mb-4 px-4 py-3 rounded-lg bg-warning/10 border border-warning/30 text-xs">
+                  <p className="font-semibold text-warning mb-1">
+                    Mulige stavfeil i rodenavn
+                  </p>
+                  <p className="text-muted">
+                    Noen rodenavn i filen ligner på eksisterende sonenavn, men matcher ikke eksakt.
+                    Hvis dette er stavefeil, vil de opprettes som nye soner og produksjonsdata havner på feil sted.
+                    Rett opp rodenavnet i Comtech eller gi sonen et nytt navn i Administrasjon av soner.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-0">
-                {soneSummary.map((sone) => (
-                  <div
-                    key={sone.navn}
-                    className="flex items-center justify-between py-3 border-b border-border last:border-b-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ background: "var(--color-navy)" }}
-                      />
-                      <span className="text-sm font-medium text-dark">
-                        {sone.navn}
-                      </span>
+                {validationResults.map((sone) => {
+                  const badge =
+                    sone.kind === "exact"
+                      ? { text: "Match", variant: "success" as const }
+                      : sone.kind === "fuzzy"
+                        ? { text: `Likner «${sone.match}»`, variant: "warning" as const }
+                        : { text: "Ny sone", variant: "info" as const }
+                  const dotColor =
+                    sone.kind === "exact"
+                      ? "#22c55e"
+                      : sone.kind === "fuzzy"
+                        ? "#f59e0b"
+                        : "var(--color-navy)"
+                  return (
+                    <div
+                      key={sone.navn}
+                      className="flex items-center justify-between py-3 border-b border-border last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: dotColor }}
+                        />
+                        <span className="text-sm font-medium text-dark">
+                          {sone.navn}
+                        </span>
+                        {kommune && <Badge variant={badge.variant}>{badge.text}</Badge>}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted">
+                          v.{Math.min(...sone.weeks)}–{Math.max(...sone.weeks)}
+                        </span>
+                        <Badge variant="default">
+                          {sone.count} tømminger
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted">
-                        v.{Math.min(...sone.weeks)}–{Math.max(...sone.weeks)}
-                      </span>
-                      <Badge variant="default">
-                        {sone.count} tømminger
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Totalsummering */}
@@ -428,6 +497,22 @@ export function KomtekImport({ kommuner }: KomtekImportProps) {
                   </Badge>
                 </div>
               </div>
+
+              {/* Bekreftelse ved fuzzy/nye */}
+              {kommune && (harFuzzyTreff || harNye) && (
+                <label className="mt-4 flex items-start gap-2 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmUnknown}
+                    onChange={(e) => setConfirmUnknown(e.target.checked)}
+                    className="mt-0.5 cursor-pointer"
+                  />
+                  <span className="text-muted">
+                    Jeg har kontrollert rodenavnene og vil fortsette importen.
+                    {harFuzzyTreff && " Mulige stavfeil vil opprettes som nye soner."}
+                  </span>
+                </label>
+              )}
             </CardContent>
           </Card>
 
@@ -483,7 +568,10 @@ export function KomtekImport({ kommuner }: KomtekImportProps) {
             <Button variant="secondary" onClick={handleReset}>
               Avbryt
             </Button>
-            <Button onClick={handleImport} disabled={!kommune}>
+            <Button
+              onClick={handleImport}
+              disabled={!kommune || ((harFuzzyTreff || harNye) && !confirmUnknown)}
+            >
               Importer {rows.length} tømminger
             </Button>
           </div>

@@ -4,13 +4,17 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Ruteplan } from "@/types/produksjon"
 
-export async function getRuteplan(kommune: string, aar: number): Promise<Ruteplan[]> {
+export async function getRuteplan(
+  kommune: string | string[],
+  aar: number
+): Promise<Ruteplan[]> {
   const supabase = await createClient()
+  const kommuner = Array.isArray(kommune) ? kommune : [kommune]
 
   const { data, error } = await supabase
     .from("serwent_ruteplan")
     .select("*, serwent_soner!inner(kommune)")
-    .eq("serwent_soner.kommune", kommune)
+    .in("serwent_soner.kommune", kommuner)
     .eq("aar", aar)
     .order("uke", { ascending: true })
 

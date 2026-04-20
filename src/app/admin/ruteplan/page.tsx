@@ -7,24 +7,32 @@ import { MunicipalityYearFilter } from "@/components/produksjon/MunicipalityYear
 import { RuteplanTabs } from "./RuteplanTabs"
 
 interface Props {
-  searchParams: Promise<{ kommune?: string; aar?: string; tab?: string }>
+  searchParams: Promise<{ kommune?: string | string[]; aar?: string; tab?: string }>
 }
 
 export default async function RuteplanPage({ searchParams }: Props) {
   const params = await searchParams
   const kommuner = await getKommunerWithSoner()
-  const kommune = params.kommune || kommuner[0] || "Gjøvik"
+
+  let selectedKommuner: string[] = []
+  if (params.kommune) {
+    selectedKommuner = Array.isArray(params.kommune)
+      ? params.kommune
+      : params.kommune.split(",").map((s) => s.trim()).filter(Boolean)
+  }
+  if (selectedKommuner.length === 0) selectedKommuner = kommuner
+
   const aar = params.aar ? parseInt(params.aar, 10) : getCurrentYear()
   const tab = params.tab || "gantt"
 
   // Hämta all data parallellt
   const [soner, allSoner, ruteplan, prevRuteplan, prevProduksjon, currentProduksjon] = await Promise.all([
-    getSoner(kommune),
-    getAllSoner(kommune),
-    getRuteplan(kommune, aar),
-    getRuteplan(kommune, aar - 1),
-    getProduksjon(kommune, aar - 1),
-    getProduksjon(kommune, aar),
+    getSoner(selectedKommuner),
+    getAllSoner(selectedKommuner),
+    getRuteplan(selectedKommuner, aar),
+    getRuteplan(selectedKommuner, aar - 1),
+    getProduksjon(selectedKommuner, aar - 1),
+    getProduksjon(selectedKommuner, aar),
   ])
 
   // Kontrollera om det finns utkast
@@ -42,8 +50,8 @@ export default async function RuteplanPage({ searchParams }: Props) {
         </h1>
         <Suspense fallback={null}>
           <MunicipalityYearFilter
-            kommuner={kommuner.length > 0 ? kommuner : [kommune]}
-            currentKommune={kommune}
+            kommuner={kommuner}
+            currentKommuner={selectedKommuner}
             currentYear={aar}
           />
         </Suspense>
@@ -57,7 +65,8 @@ export default async function RuteplanPage({ searchParams }: Props) {
           prevRuteplan={prevRuteplan}
           prevProduksjon={prevProduksjon}
           currentProduksjon={currentProduksjon}
-          kommune={kommune}
+          kommune={selectedKommuner.length === 1 ? selectedKommuner[0] : ""}
+          selectedKommuner={selectedKommuner}
           aar={aar}
           activeTab={tab}
           hasUtkast={hasUtkast}

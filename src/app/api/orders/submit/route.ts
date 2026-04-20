@@ -52,6 +52,60 @@ export async function POST(request: NextRequest) {
     const orderId = generateOrderId()
     const supabase = createAdminClient()
 
+    // Detekter ekstratømming: hvis samme eiendom (gnr/bnr+kommune) eller adresse
+    // har fått tømming tidligere samme år, markeres ordren automatisk som ekstra.
+    // Dette hindrer tastefeil i bestillingen fra å feilklassifisere en ekstra
+    // tømming som ordinær og påvirke faktureringen.
+    let erEkstra = false
+    let ekstraGrunn: string | null = null
+
+    const typeStr = (tomming_type || "").toLowerCase()
+    if (typeStr.includes("ekstra") || typeStr.includes("nødtømming")) {
+      erEkstra = true
+      ekstraGrunn = "Valgt type er ekstratømming"
+    } else {
+      const aarStart = new Date(new Date().getFullYear(), 0, 1).toISOString()
+      const trimmedKommune = kommune?.trim() || ""
+      const trimmedGnr = gnr?.trim() || ""
+      const trimmedBnr = bnr?.trim() || ""
+      const trimmedAdresse = adresse?.trim() || ""
+
+      if (trimmedGnr && trimmedBnr && trimmedKommune) {
+        // Sjekk tidligere ordrer på samme eiendom samme år
+        const { data: tidligereOrdre } = await supabase
+          .from("orders")
+          .select("id, created_at, status")
+          .eq("kommune", trimmedKommune)
+          .eq("gnr", trimmedGnr)
+          .eq("bnr", trimmedBnr)
+          .gte("created_at", aarStart)
+          .limit(1)
+
+        if (tidligereOrdre && tidligereOrdre.length > 0) {
+          erEkstra = true
+          ekstraGrunn = "Tidligere bestilling på samme eiendom dette året"
+        } else {
+          // Sjekk også Comtech-importerte tømminger på samme adresse
+          const { data: tidligereKomtek } = await supabase
+            .from("serwent_komtek_tomming")
+            .select("id")
+            .eq("kommune", trimmedKommune)
+            .eq("aar", new Date().getFullYear())
+            .or(
+              trimmedAdresse
+                ? `adresse.eq.${trimmedAdresse},eiendom.eq.${trimmedGnr}/${trimmedBnr}`
+                : `eiendom.eq.${trimmedGnr}/${trimmedBnr}`
+            )
+            .limit(1)
+
+          if (tidligereKomtek && tidligereKomtek.length > 0) {
+            erEkstra = true
+            ekstraGrunn = "Tidligere registrert tømming på eiendommen i Comtech"
+          }
+        }
+      }
+    }
+
     // Insert order
     const insertData: Record<string, unknown> = {
       order_id: orderId,
@@ -66,6 +120,8 @@ export async function POST(request: NextRequest) {
       kommentar: kommentar?.trim() || null,
       tank_storrelse_m3: tank_storrelse_m3 ? parseFloat(tank_storrelse_m3) : null,
       status: "ny",
+      er_ekstra: erEkstra,
+      ekstra_grunn: ekstraGrunn,
       lat: lat || null,
       lng: lng || null,
     }

@@ -10,23 +10,33 @@ import { ZoneTable } from "@/components/produksjon/ZoneTable"
 import { CsvExportButton } from "@/components/produksjon/CsvExportButton"
 
 interface Props {
-  searchParams: Promise<{ kommune?: string; aar?: string; uke?: string }>
+  searchParams: Promise<{ kommune?: string | string[]; aar?: string; uke?: string }>
 }
 
 export default async function ProduksjonPage({ searchParams }: Props) {
   const params = await searchParams
   const kommuner = await getKommunerWithSoner()
-  const kommune = params.kommune || kommuner[0] || "Gjøvik"
+
+  // Parse kommune-filter: kan vara string, array eller komma-separerad
+  let selectedKommuner: string[] = []
+  if (params.kommune) {
+    selectedKommuner = Array.isArray(params.kommune)
+      ? params.kommune
+      : params.kommune.split(",").map((s) => s.trim()).filter(Boolean)
+  }
+  // Fallback: alla tillgängliga kommuner
+  if (selectedKommuner.length === 0) selectedKommuner = kommuner
+
   const aar = params.aar ? parseInt(params.aar, 10) : getCurrentYear()
   const currentWeek = getCurrentWeek()
   const selectedWeek = params.uke ? parseInt(params.uke, 10) : currentWeek
 
   // Hämta all data parallellt
   const [stats, weekSummaries, activeWeeks, zoneData] = await Promise.all([
-    getProduksjonStats(kommune, aar),
-    getWeekSummaries(kommune, aar),
-    getActiveWeeks(kommune, aar),
-    getZoneWeekData(kommune, aar, selectedWeek),
+    getProduksjonStats(selectedKommuner, aar),
+    getWeekSummaries(selectedKommuner, aar),
+    getActiveWeeks(selectedKommuner, aar),
+    getZoneWeekData(selectedKommuner, aar, selectedWeek),
   ])
 
   // Avgör vilka veckor som är "done" (fullförda)
@@ -53,12 +63,12 @@ export default async function ProduksjonPage({ searchParams }: Props) {
         <div className="flex items-center gap-3">
           <Suspense fallback={null}>
             <MunicipalityYearFilter
-              kommuner={kommuner.length > 0 ? kommuner : [kommune]}
-              currentKommune={kommune}
+              kommuner={kommuner}
+              currentKommuner={selectedKommuner}
               currentYear={aar}
             />
           </Suspense>
-          <CsvExportButton kommune={kommune} aar={aar} />
+          <CsvExportButton kommune={selectedKommuner[0] ?? ""} aar={aar} />
         </div>
       </div>
 

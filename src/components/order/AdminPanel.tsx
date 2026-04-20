@@ -110,6 +110,11 @@ export function AdminPanel({ initialOrders, kommuner }: AdminPanelProps) {
 
   const getOrderType = (order: Order): string => {
     const year = new Date(order.created_at).getFullYear()
+
+    // Manuelt flagg fra submit-routens deteksjon (tidligere Comtech-tømming
+    // eller "ekstra"-tømming valgt i skjemaet).
+    if (order.er_ekstra) return "Ekstra"
+
     if (!order.gnr || !order.bnr) return "Ordinaer"
 
     const earlier = orders.filter(

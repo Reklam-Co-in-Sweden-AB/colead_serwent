@@ -4,17 +4,21 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Sone, SoneInsert } from "@/types/produksjon"
 
-export async function getSoner(kommune?: string): Promise<Sone[]> {
+export async function getSoner(kommune?: string | string[]): Promise<Sone[]> {
   const supabase = await createClient()
 
   let query = supabase
     .from("serwent_soner")
     .select("*")
     .eq("aktiv", true)
+    .order("kommune", { ascending: true })
     .order("sort_order", { ascending: true })
 
   if (kommune) {
-    query = query.eq("kommune", kommune)
+    const kommuner = Array.isArray(kommune) ? kommune : [kommune]
+    if (kommuner.length > 0) {
+      query = query.in("kommune", kommuner)
+    }
   }
 
   const { data, error } = await query
@@ -27,13 +31,15 @@ export async function getSoner(kommune?: string): Promise<Sone[]> {
   return (data as Sone[]) || []
 }
 
-export async function getAllSoner(kommune: string): Promise<Sone[]> {
+export async function getAllSoner(kommune: string | string[]): Promise<Sone[]> {
   const supabase = await createClient()
+  const kommuner = Array.isArray(kommune) ? kommune : [kommune]
 
   const { data, error } = await supabase
     .from("serwent_soner")
     .select("*")
-    .eq("kommune", kommune)
+    .in("kommune", kommuner)
+    .order("kommune", { ascending: true })
     .order("sort_order", { ascending: true })
 
   if (error) {
@@ -95,6 +101,23 @@ export async function deleteSone(id: string) {
   revalidatePath("/admin/ruteplan")
   revalidatePath("/admin/produksjon")
   return { success: true }
+}
+
+export async function getSoneNavnForKommune(kommune: string): Promise<string[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("serwent_soner")
+    .select("navn")
+    .eq("kommune", kommune)
+    .eq("aktiv", true)
+
+  if (error) {
+    console.error("[getSoneNavnForKommune] Error:", error)
+    return []
+  }
+
+  return (data || []).map((d: { navn: string }) => d.navn).sort()
 }
 
 export async function getKommunerWithSoner(): Promise<string[]> {

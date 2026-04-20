@@ -19,6 +19,7 @@ interface Props {
   prevProduksjon: Produksjon[]
   currentProduksjon: Produksjon[]
   kommune: string
+  selectedKommuner: string[]
   aar: number
   activeTab: string
   hasUtkast: boolean
@@ -38,34 +39,50 @@ export function RuteplanTabs({
   prevProduksjon,
   currentProduksjon,
   kommune,
+  selectedKommuner,
   aar,
   activeTab,
   hasUtkast,
 }: Props) {
   const [tab, setTab] = useState(activeTab)
-  const [kapasitet, setKapasitet] = useState(50)
+  const [kapasitet] = useState(55)
   const [historyZone, setHistoryZone] = useState<Sone | null>(null)
   const [showCurrentYear, setShowCurrentYear] = useState(false)
   const [tommingDetail, setTommingDetail] = useState<{ sone: Sone; uke: number } | null>(null)
   const [isPending, startTransition] = useTransition()
 
+  // Plan-operasjoner krever én enkelt valgt kommune (Kopier/Nullstill/Slett)
+  const singleKommune = selectedKommuner.length === 1 ? selectedKommuner[0] : kommune
+  const canEditPlan = Boolean(singleKommune)
+
+  const requireSingle = () => {
+    if (!canEditPlan) {
+      alert("Velg én enkelt kommune i toppmenyen før du endrer planen.")
+      return false
+    }
+    return true
+  }
+
   const handleCopyPrev = () => {
-    if (!confirm(`Kopiere planen fra ${aar - 1} til ${aar} for ${kommune}?\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
+    if (!requireSingle()) return
+    if (!confirm(`Kopiere planen fra ${aar - 1} til ${aar} for ${singleKommune}?\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
     startTransition(async () => {
-      await copyPreviousYear(kommune, aar - 1, aar, kapasitet)
+      await copyPreviousYear(singleKommune, aar - 1, aar, kapasitet)
     })
   }
 
   const handleReset = () => {
-    if (!confirm(`Nullstille alle UTKAST i ruteplanen for ${kommune} år ${aar}?\n\nKun upubliserte endringer fjernes. Publiserte planer blir værende.\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
+    if (!requireSingle()) return
+    if (!confirm(`Nullstille alle UTKAST i ruteplanen for ${singleKommune} år ${aar}?\n\nKun upubliserte endringer fjernes. Publiserte planer blir værende.\n\nVelg et annet år i toppmenyen først hvis dette er feil år.`)) return
     startTransition(async () => {
-      await resetRuteplan(kommune, aar)
+      await resetRuteplan(singleKommune, aar)
     })
   }
 
   const handleDeleteAll = () => {
+    if (!requireSingle()) return
     const typed = prompt(
-      `ADVARSEL: Dette sletter HELE ruteplanen for ${kommune} år ${aar} — både utkast og publisert.\n\nFaktiske tømminger (Komtek-import) blir værende, men plandata forsvinner permanent.\n\nSkriv inn årstallet (${aar}) for å bekrefte:`
+      `ADVARSEL: Dette sletter HELE ruteplanen for ${singleKommune} år ${aar} — både utkast og publisert.\n\nFaktiske tømminger (Komtek-import) blir værende, men plandata forsvinner permanent.\n\nSkriv inn årstallet (${aar}) for å bekrefte:`
     )
     if (typed === null) return
     const confirmAar = parseInt(typed.trim(), 10)
@@ -74,11 +91,11 @@ export function RuteplanTabs({
       return
     }
     startTransition(async () => {
-      const res = await deleteFullRuteplan(kommune, aar, confirmAar)
+      const res = await deleteFullRuteplan(singleKommune, aar, confirmAar)
       if (res.error) {
         alert(`Feil: ${res.error}`)
       } else {
-        alert(`Slettet ${res.deleted} rader fra ruteplanen for ${kommune} ${aar}.`)
+        alert(`Slettet ${res.deleted} rader fra ruteplanen for ${singleKommune} ${aar}.`)
       }
     })
   }

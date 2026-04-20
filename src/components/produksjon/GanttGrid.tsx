@@ -22,6 +22,7 @@ const GanttRow = memo(function GanttRow({
   planMap,
   histMap,
   aar,
+  indent = false,
   onCellClick,
   onZoneClick,
   onHistoryCellClick,
@@ -31,6 +32,7 @@ const GanttRow = memo(function GanttRow({
   planMap: Map<number, number>
   histMap: Map<number, { pct: number | null; raw: number }>
   aar: number
+  indent?: boolean
   onCellClick: (soneId: string, uke: number, currentPlanlagt: number, e: React.MouseEvent) => void
   onZoneClick?: (sone: Sone) => void
   onHistoryCellClick?: (sone: Sone, uke: number) => void
@@ -42,7 +44,7 @@ const GanttRow = memo(function GanttRow({
       <tr>
         <td
           className="text-[11px] font-medium px-3.5 h-7 bg-white border-r-[1.5px] border-border whitespace-nowrap cursor-pointer hover:bg-navy-soft/50 sticky left-0 z-10"
-          style={{ color: "var(--color-navy)", minWidth: 150 }}
+          style={{ color: "var(--color-navy)", minWidth: 150, paddingLeft: indent ? 36 : 14 }}
           onClick={() => onZoneClick?.(sone)}
         >
           <span className="inline-flex items-center gap-1.5">
@@ -81,7 +83,7 @@ const GanttRow = memo(function GanttRow({
       <tr>
         <td
           className="text-[10px] italic px-3.5 h-7 bg-white border-r-[1.5px] border-border whitespace-nowrap opacity-55 sticky left-0 z-10"
-          style={{ paddingLeft: 28, minWidth: 150 }}
+          style={{ paddingLeft: indent ? 52 : 28, minWidth: 150 }}
         >
           <span>↳ {historyLabel || `${aar - 1} faktisk`}</span>
         </td>
@@ -143,6 +145,16 @@ export function GanttGrid({
   onHistoryCellClick,
   historyLabel,
 }: Props) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const toggleGroup = useCallback((key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
   const [localPlan, setLocalPlan] = useState<Map<string, number>>(() => {
     const map = new Map<string, number>()
     for (const r of ruteplan) {
@@ -283,33 +295,181 @@ export function GanttGrid({
           </tr>
         </thead>
         <tbody>
-          {soner.map((sone) => {
-            const sonePlanMap = new Map<number, number>()
-            for (const [key, val] of localPlan) {
-              const [sid, uke] = key.split(":")
-              if (sid === sone.id) sonePlanMap.set(parseInt(uke), val)
+          {(() => {
+            // Gruppér soner: samme (kommune, gruppe) havner sammen.
+            // Soner uten gruppe vises som egen "solo-gruppe" (ingen header).
+            const groups: Array<{ key: string; kommune: string; gruppe: string | null; soner: Sone[] }> = []
+            const seenKey = new Map<string, number>()
+            for (const s of soner) {
+              const key = s.gruppe ? `${s.kommune}::${s.gruppe}` : `__solo__${s.id}`
+              const existing = seenKey.get(key)
+              if (existing !== undefined) {
+                groups[existing].soner.push(s)
+              } else {
+                seenKey.set(key, groups.length)
+                groups.push({ key, kommune: s.kommune, gruppe: s.gruppe, soner: [s] })
+              }
             }
 
-            const soneHistMap = new Map<number, { pct: number | null; raw: number }>()
-            for (const [key, val] of histMap) {
-              const [sid, uke] = key.split(":")
-              if (sid === sone.id) soneHistMap.set(parseInt(uke), val)
-            }
+            // Sjekk om flere kommuner er representert — i så fall vises kommun-header
+            const unikeKommuner = new Set(groups.map((g) => g.kommune))
+            const visKommuneHeader = unikeKommuner.size > 1
 
-            return (
-              <GanttRow
-                key={sone.id}
-                sone={sone}
-                planMap={sonePlanMap}
-                histMap={soneHistMap}
-                aar={aar}
-                onCellClick={handleCellClick}
-                onZoneClick={onZoneClick}
-                onHistoryCellClick={onHistoryCellClick}
-                historyLabel={historyLabel}
-              />
-            )
-          })}
+            const render: React.ReactNode[] = []
+            let forrigeKommune: string | null = null
+            for (const g of groups) {
+              if (visKommuneHeader && g.kommune !== forrigeKommune) {
+                forrigeKommune = g.kommune
+                render.push(
+                  <tr key={`khdr-${g.kommune}`}>
+                    <td
+                      colSpan={53}
+                      className="text-[10px] font-bold uppercase tracking-widest px-3.5 py-1 border-b border-border sticky left-0 z-10"
+                      style={{
+                        background: "var(--color-navy)",
+                        color: "white",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {g.kommune}
+                    </td>
+                  </tr>
+                )
+              }
+
+              const isGroup = g.gruppe !== null && g.soner.length > 1
+              const expanded = !collapsedGroups.has(g.key)
+
+              if (isGroup) {
+                // Aggregert gruppe-rad
+                const aggPlan = new Map<number, number>()
+                const aggHist = new Map<number, { pct: number | null; raw: number; planned: number }>()
+                for (const s of g.soner) {
+                  for (const [key, val] of localPlan) {
+                    const [sid, ukeStr] = key.split(":")
+                    if (sid === s.id) {
+                      const uke = parseInt(ukeStr)
+                      aggPlan.set(uke, (aggPlan.get(uke) || 0) + val)
+                    }
+                  }
+                  for (const [key, val] of histMap) {
+                    const [sid, ukeStr] = key.split(":")
+                    if (sid === s.id) {
+                      const uke = parseInt(ukeStr)
+                      const prev = aggHist.get(uke) || { pct: null, raw: 0, planned: 0 }
+                      prev.raw += val.raw
+                      aggHist.set(uke, prev)
+                    }
+                  }
+                }
+                // Regne ut gruppe-prosent basert på aggregert plan vs raw
+                for (const [uke, plan] of aggPlan) {
+                  const h = aggHist.get(uke)
+                  if (h) {
+                    h.planned = plan
+                    h.pct = plan > 0 ? Math.round((h.raw / plan) * 100) : null
+                  }
+                }
+
+                const repColor = g.soner[0].farge
+                render.push(
+                  <tr
+                    key={`g-${g.key}`}
+                    className="cursor-pointer hover:bg-navy-soft/40"
+                    onClick={() => toggleGroup(g.key)}
+                  >
+                    <td
+                      className="text-[11px] font-bold px-3.5 h-7 bg-navy-soft/20 border-r-[1.5px] border-border whitespace-nowrap sticky left-0 z-10"
+                      style={{ color: "var(--color-navy)", minWidth: 150 }}
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono w-3 inline-block">{expanded ? "▼" : "▶"}</span>
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0 inline-block"
+                          style={{ background: repColor }}
+                        />
+                        {g.gruppe}
+                        <span className="text-[9px] font-normal text-muted">({g.soner.length})</span>
+                      </span>
+                    </td>
+                    {Array.from({ length: 52 }, (_, i) => i + 1).map((uke) => {
+                      const planlagt = aggPlan.get(uke) || 0
+                      const filled = planlagt > 0
+                      return (
+                        <td
+                          key={uke}
+                          className="border-r border-b border-border h-7 text-center text-[9px] font-mono font-bold"
+                          style={
+                            filled
+                              ? { background: "rgba(27,58,107,0.2)", color: "var(--color-navy)" }
+                              : undefined
+                          }
+                        >
+                          {filled ? planlagt : ""}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+
+                if (expanded) {
+                  for (const s of g.soner) {
+                    const sonePlanMap = new Map<number, number>()
+                    for (const [key, val] of localPlan) {
+                      const [sid, uke] = key.split(":")
+                      if (sid === s.id) sonePlanMap.set(parseInt(uke), val)
+                    }
+                    const soneHistMap = new Map<number, { pct: number | null; raw: number }>()
+                    for (const [key, val] of histMap) {
+                      const [sid, uke] = key.split(":")
+                      if (sid === s.id) soneHistMap.set(parseInt(uke), val)
+                    }
+                    render.push(
+                      <GanttRow
+                        key={s.id}
+                        sone={s}
+                        planMap={sonePlanMap}
+                        histMap={soneHistMap}
+                        aar={aar}
+                        indent
+                        onCellClick={handleCellClick}
+                        onZoneClick={onZoneClick}
+                        onHistoryCellClick={onHistoryCellClick}
+                        historyLabel={historyLabel}
+                      />
+                    )
+                  }
+                }
+              } else {
+                // Ingen gruppering — vis enkelt-sone som vanlig
+                const s = g.soner[0]
+                const sonePlanMap = new Map<number, number>()
+                for (const [key, val] of localPlan) {
+                  const [sid, uke] = key.split(":")
+                  if (sid === s.id) sonePlanMap.set(parseInt(uke), val)
+                }
+                const soneHistMap = new Map<number, { pct: number | null; raw: number }>()
+                for (const [key, val] of histMap) {
+                  const [sid, uke] = key.split(":")
+                  if (sid === s.id) soneHistMap.set(parseInt(uke), val)
+                }
+                render.push(
+                  <GanttRow
+                    key={s.id}
+                    sone={s}
+                    planMap={sonePlanMap}
+                    histMap={soneHistMap}
+                    aar={aar}
+                    onCellClick={handleCellClick}
+                    onZoneClick={onZoneClick}
+                    onHistoryCellClick={onHistoryCellClick}
+                    historyLabel={historyLabel}
+                  />
+                )
+              }
+            }
+            return render
+          })()}
         </tbody>
       </table>
 
@@ -325,7 +485,7 @@ export function GanttGrid({
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span className="text-[11px] text-muted">
-          Klikk på en celle for å velge antall tømminger for den uken. Klikk «Fjern» for å tømme cellen.
+          Klikk på en celle for å velge antall tømminger for den uken. Klikk «Fjern» for å tømme cellen. Klikk en gruppe-rad (▼/▶) for å åpne/lukke tilhørende roter.
         </span>
       </div>
 
@@ -344,6 +504,8 @@ export function GanttGrid({
   )
 }
 
+const DEFAULT_KAPASITET = 55
+
 const CellPopup = memo(function CellPopup({
   ref,
   uke,
@@ -359,11 +521,19 @@ const CellPopup = memo(function CellPopup({
   current: number
   onSelect: (val: number) => void
 }) {
-  const [input, setInput] = useState<string>(current > 0 ? String(current) : "")
+  const [input, setInput] = useState<string>(
+    current > 0 ? String(current) : String(DEFAULT_KAPASITET)
+  )
+
+  const numericValue = Math.max(0, Math.floor(Number(input) || 0))
 
   const commit = () => {
-    const val = Math.max(0, Math.floor(Number(input) || 0))
-    onSelect(val)
+    onSelect(numericValue)
+  }
+
+  const adjust = (delta: number) => {
+    const next = Math.max(0, numericValue + delta)
+    setInput(String(next))
   }
 
   return (
@@ -373,13 +543,21 @@ const CellPopup = memo(function CellPopup({
       style={{
         left: Math.min(x - 90, window.innerWidth - 200),
         top: y,
-        minWidth: 180,
+        minWidth: 220,
       }}
     >
       <div className="text-[10px] text-muted font-semibold uppercase tracking-wider px-1 pt-0.5 pb-2">
         Uke {uke} — Antall tømminger
       </div>
       <div className="flex items-center gap-1.5 mb-2">
+        <button
+          onClick={() => adjust(-1)}
+          className="h-9 w-9 rounded-lg text-base font-bold cursor-pointer transition-colors border bg-white hover:bg-navy-soft/40 shrink-0"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-navy)" }}
+          aria-label="Minsk med én"
+        >
+          −
+        </button>
         <input
           type="number"
           min={0}
@@ -388,37 +566,38 @@ const CellPopup = memo(function CellPopup({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") commit()
+            if (e.key === "ArrowUp") {
+              e.preventDefault()
+              adjust(1)
+            }
+            if (e.key === "ArrowDown") {
+              e.preventDefault()
+              adjust(-1)
+            }
           }}
           className="flex-1 h-9 px-2 rounded-lg text-sm font-bold font-mono text-center border-2 focus:outline-none focus:border-navy"
           style={{ borderColor: "var(--color-border)", color: "var(--color-navy)" }}
         />
         <button
-          onClick={commit}
-          className="h-9 px-3 rounded-lg text-xs font-bold text-white cursor-pointer transition-colors"
-          style={{ background: "var(--color-navy)" }}
+          onClick={() => adjust(1)}
+          className="h-9 w-9 rounded-lg text-base font-bold cursor-pointer transition-colors border bg-white hover:bg-navy-soft/40 shrink-0"
+          style={{ borderColor: "var(--color-border)", color: "var(--color-navy)" }}
+          aria-label="Øk med én"
         >
-          OK
+          +
         </button>
       </div>
-      <div className="flex gap-1 mb-1">
-        {[5, 10, 20, 30, 50].map((val) => (
-          <button
-            key={val}
-            onClick={() => onSelect(val)}
-            className="flex-1 h-7 rounded-md text-[11px] font-bold cursor-pointer transition-colors border bg-white hover:bg-navy-soft/40"
-            style={{
-              borderColor: current === val ? "var(--color-navy)" : "var(--color-border)",
-              color: "var(--color-navy)",
-            }}
-          >
-            {val}
-          </button>
-        ))}
-      </div>
+      <button
+        onClick={commit}
+        className="w-full h-9 rounded-lg text-xs font-bold text-white cursor-pointer transition-colors"
+        style={{ background: "var(--color-navy)" }}
+      >
+        Lagre
+      </button>
       {current > 0 && (
         <button
           onClick={() => onSelect(0)}
-          className="w-full mt-1 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors text-error hover:bg-error/5 border border-transparent hover:border-error/20"
+          className="w-full mt-1.5 py-1.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors text-error hover:bg-error/5 border border-transparent hover:border-error/20"
         >
           Fjern
         </button>

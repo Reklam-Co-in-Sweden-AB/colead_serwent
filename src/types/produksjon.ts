@@ -4,6 +4,7 @@ export interface Sone {
   id: string
   kommune: string
   navn: string
+  gruppe: string | null
   farge: string
   sort_order: number
   aktiv: boolean
@@ -13,6 +14,7 @@ export interface Sone {
 export interface SoneInsert {
   kommune: string
   navn: string
+  gruppe?: string | null
   farge?: string
   sort_order?: number
   aktiv?: boolean

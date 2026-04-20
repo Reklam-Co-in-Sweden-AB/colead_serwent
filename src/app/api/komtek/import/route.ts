@@ -177,6 +177,7 @@ export async function POST(request: NextRequest) {
     type_tomming: string | null
     tomme_volum: number | null
     tommer: string | null
+    bil: string | null
     avvik: string | null
     rodenavn: string
     import_id: string | null
@@ -221,6 +222,7 @@ export async function POST(request: NextRequest) {
       type_tomming: row.type_tomming,
       tomme_volum: row.tomme_volum,
       tommer: row.tommer,
+      bil: row.bil,
       avvik: row.avvik,
       rodenavn: row.rodenavn,
       import_id: importId,
