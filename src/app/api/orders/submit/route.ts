@@ -5,6 +5,7 @@ import { rateLimit } from "@/lib/rate-limit"
 import { runAutomations } from "@/lib/automations"
 import { notifyNewOrder } from "@/lib/messaging"
 import { trackConversion } from "@/lib/tracking"
+import { normalizeAnleggsType } from "@/lib/anleggstype"
 
 function generateOrderId(): string {
   return (
@@ -52,14 +53,18 @@ export async function POST(request: NextRequest) {
     const orderId = generateOrderId()
     const supabase = createAdminClient()
 
-    // Detekter ekstratømming: hvis samme eiendom (gnr/bnr+kommune) eller adresse
-    // har fått tømming tidligere samme år, markeres ordren automatisk som ekstra.
-    // Dette hindrer tastefeil i bestillingen fra å feilklassifisere en ekstra
-    // tømming som ordinær og påvirke faktureringen.
+    // Detekter ekstratømming: hvis samme eiendom (gnr/bnr+kommune) OG SAMME
+    // anleggstype har fått tømming tidligere samme år, markeres ordren automatisk
+    // som ekstra. Matchningen tar hensyn til anleggstype for å unngå at f.eks.
+    // en Lukket tank-bestilling felaktig markeres som ekstra etter en Slamavskiller-
+    // tømming på samme adresse (det er to separate anlegg).
     let erEkstra = false
     let ekstraGrunn: string | null = null
 
-    const typeStr = (tomming_type || "").toLowerCase()
+    const trimmedType = (tomming_type || "").trim()
+    const typeStr = trimmedType.toLowerCase()
+    const nyAnleggsGruppe = normalizeAnleggsType(trimmedType)
+
     if (typeStr.includes("ekstra") || typeStr.includes("nødtømming")) {
       erEkstra = true
       ekstraGrunn = "Valgt type er ekstratømming"
@@ -71,24 +76,29 @@ export async function POST(request: NextRequest) {
       const trimmedAdresse = adresse?.trim() || ""
 
       if (trimmedGnr && trimmedBnr && trimmedKommune) {
-        // Sjekk tidligere ordrer på samme eiendom samme år
+        // Hent alle tidligere ordrer på samme eiendom samme år — filtrer på
+        // anleggsgruppe i koden siden Postgres ikke kan normalisere fritekst
         const { data: tidligereOrdre } = await supabase
           .from("orders")
-          .select("id, created_at, status")
+          .select("id, created_at, tomming_type")
           .eq("kommune", trimmedKommune)
           .eq("gnr", trimmedGnr)
           .eq("bnr", trimmedBnr)
           .gte("created_at", aarStart)
-          .limit(1)
 
-        if (tidligereOrdre && tidligereOrdre.length > 0) {
+        const sammeGruppeOrdre = (tidligereOrdre || []).filter(
+          (o: { tomming_type: string | null }) =>
+            normalizeAnleggsType(o.tomming_type) === nyAnleggsGruppe
+        )
+
+        if (sammeGruppeOrdre.length > 0) {
           erEkstra = true
-          ekstraGrunn = "Tidligere bestilling på samme eiendom dette året"
+          ekstraGrunn = `Tidligere ${sammeGruppeOrdre.length} bestilling(er) på samme anlegg dette året`
         } else {
-          // Sjekk også Comtech-importerte tømminger på samme adresse
+          // Sjekk Comtech-importerte tømminger på samme adresse + samme anleggstype
           const { data: tidligereKomtek } = await supabase
             .from("serwent_komtek_tomming")
-            .select("id")
+            .select("id, anleggstype, type_tomming")
             .eq("kommune", trimmedKommune)
             .eq("aar", new Date().getFullYear())
             .or(
@@ -96,11 +106,17 @@ export async function POST(request: NextRequest) {
                 ? `adresse.eq.${trimmedAdresse},eiendom.eq.${trimmedGnr}/${trimmedBnr}`
                 : `eiendom.eq.${trimmedGnr}/${trimmedBnr}`
             )
-            .limit(1)
 
-          if (tidligereKomtek && tidligereKomtek.length > 0) {
+          const sammeGruppeKomtek = (tidligereKomtek || []).filter(
+            (k: { anleggstype: string | null; type_tomming: string | null }) => {
+              const gruppe = normalizeAnleggsType(k.anleggstype || k.type_tomming)
+              return gruppe === nyAnleggsGruppe
+            }
+          )
+
+          if (sammeGruppeKomtek.length > 0) {
             erEkstra = true
-            ekstraGrunn = "Tidligere registrert tømming på eiendommen i Comtech"
+            ekstraGrunn = "Tidligere registrert tømming på samme anlegg i Comtech"
           }
         }
       }

@@ -10,6 +10,7 @@ import {
   type OrderStatus,
 } from "@/lib/constants"
 import type { Order } from "@/types/database"
+import { normalizeAnleggsType } from "@/lib/anleggstype"
 
 type ViewMode = "table" | "kanban" | "list"
 
@@ -117,12 +118,17 @@ export function AdminPanel({ initialOrders, kommuner }: AdminPanelProps) {
 
     if (!order.gnr || !order.bnr) return "Ordinaer"
 
+    // Normaliser anleggstype så olika typer (t.ex. Lukket tank vs Slamavskiller)
+    // på samma adress inte räknas som ekstra av varandra.
+    const denneGruppen = normalizeAnleggsType(order.tomming_type)
+
     const earlier = orders.filter(
       (o) =>
         o.id !== order.id &&
         o.gnr === order.gnr &&
         o.bnr === order.bnr &&
         o.kommune === order.kommune &&
+        normalizeAnleggsType(o.tomming_type) === denneGruppen &&
         new Date(o.created_at).getFullYear() === year &&
         o.created_at < order.created_at
     )
