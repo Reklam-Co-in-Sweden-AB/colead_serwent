@@ -151,16 +151,38 @@ export function DynamicForm({ form }: DynamicFormProps) {
       const data = await res.json()
 
       if (!res.ok) {
+        const fieldErrors: Record<string, string> = {}
+
         if (data.errors) {
-          // Map backend errors to field IDs
-          const fieldErrors: Record<string, string> = {}
           for (const field of allFields) {
             if (field.mapping && data.errors[field.mapping]) {
               fieldErrors[field.id] = data.errors[field.mapping]
             }
           }
-          setErrors(fieldErrors)
         }
+
+        // Hoppa tillbaka till första steget som har ett felmeddelande — annars
+        // står användaren kvar på sista steget och ser inga fält som är röda
+        const erroredFieldIds = Object.keys(fieldErrors)
+        if (erroredFieldIds.length > 0) {
+          const firstErrorStepIndex = steps.findIndex((s) =>
+            s.form_fields.some((f) => erroredFieldIds.includes(f.id))
+          )
+          if (firstErrorStepIndex !== -1 && firstErrorStepIndex !== currentStep) {
+            setCurrentStep(firstErrorStepIndex)
+          }
+        }
+
+        // Visa alltid ett generellt felmeddelande så det aldrig blir tyst —
+        // täcker rate limit (429), serverfel (500) och fält som saknar mapping
+        const generalMessage =
+          data.error ||
+          (erroredFieldIds.length > 0
+            ? "Kontroller feltene markert med rødt og prøv igjen."
+            : "Noe gikk galt. Prøv igjen.")
+        fieldErrors._form = generalMessage
+
+        setErrors(fieldErrors)
         setSubmitting(false)
         return
       }
