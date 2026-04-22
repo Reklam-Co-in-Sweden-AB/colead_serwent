@@ -26,6 +26,7 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
   const [editName, setEditName] = useState("")
   const [editGruppe, setEditGruppe] = useState("")
   const [editColor, setEditColor] = useState("")
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   // Eksisterende grupper for forslag (datalist)
@@ -302,36 +303,59 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
                         >
                           Rediger
                         </button>
-                        {sone.aktiv ? (
+                        <div className="relative">
                           <button
-                            onClick={() => handleHide(sone)}
+                            onClick={() => setMenuOpenId(menuOpenId === sone.id ? null : sone.id)}
                             disabled={isPending}
-                            className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-navy transition-colors"
-                            style={{ color: "var(--color-navy)" }}
-                            title="Skjuler sonen fra Gantt-oversikten. Historikk beholdes."
+                            className="w-7 h-7 flex items-center justify-center rounded cursor-pointer text-muted hover:bg-navy-soft/60 hover:text-navy transition-colors"
+                            aria-label="Flere handlinger"
+                            title="Flere handlinger"
                           >
-                            Fjern fra Gantt
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                              <circle cx="8" cy="3" r="1.3" />
+                              <circle cx="8" cy="8" r="1.3" />
+                              <circle cx="8" cy="13" r="1.3" />
+                            </svg>
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleReactivate(sone)}
-                            disabled={isPending}
-                            className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-green-600 transition-colors"
-                            style={{ color: "#16a34a" }}
-                            title="Viser sonen i Gantt-oversikten igjen."
-                          >
-                            Reaktiver
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeletePermanent(sone)}
-                          disabled={isPending}
-                          className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-red transition-colors"
-                          style={{ color: "var(--color-red)" }}
-                          title="Sletter sonen og all historikk permanent."
-                        >
-                          Slett permanent
-                        </button>
+                          {menuOpenId === sone.id && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={() => setMenuOpenId(null)}
+                              />
+                              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[180px]">
+                                {sone.aktiv ? (
+                                  <button
+                                    onClick={() => { setMenuOpenId(null); handleHide(sone) }}
+                                    disabled={isPending}
+                                    className="w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-navy-soft/50 cursor-pointer"
+                                    style={{ color: "var(--color-navy)" }}
+                                  >
+                                    Fjern fra Gantt
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => { setMenuOpenId(null); handleReactivate(sone) }}
+                                    disabled={isPending}
+                                    className="w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-navy-soft/50 cursor-pointer"
+                                    style={{ color: "#16a34a" }}
+                                  >
+                                    Reaktiver
+                                  </button>
+                                )}
+                                <div className="border-t border-border my-1" />
+                                <button
+                                  onClick={() => { setMenuOpenId(null); handleDeletePermanent(sone) }}
+                                  disabled={isPending}
+                                  className="w-full text-left px-3 py-1.5 text-[11px] font-medium hover:bg-error/10 cursor-pointer"
+                                  style={{ color: "var(--color-red)" }}
+                                >
+                                  Slett permanent
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>
