@@ -1,5 +1,11 @@
 export type OrderStatus = "ny" | "under_behandling" | "utfort"
 
+export interface FormSvar {
+  label: string
+  value: string
+  mapping?: string | null
+}
+
 export interface Order {
   id: string
   order_id: string
@@ -20,6 +26,7 @@ export interface Order {
   colead_synced: boolean
   colead_lead_id: string | null
   planlagt_dato: string | null
+  form_svar: FormSvar[] | null
   created_at: string
   updated_at: string
 }

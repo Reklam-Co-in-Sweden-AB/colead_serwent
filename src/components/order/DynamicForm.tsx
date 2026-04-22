@@ -132,6 +132,19 @@ export function DynamicForm({ form }: DynamicFormProps) {
       }
     }
 
+    // Bygg form_svar — label + verdi per felt. Bevarer både visningsetikett og
+    // verdi slik at bestillingen forblir leselig även om skjemaet endres senere.
+    const formSvar = allFields
+      .filter((f) => {
+        const v = formData[f.id]
+        return v != null && String(v).trim() !== ""
+      })
+      .map((f) => ({
+        label: f.label,
+        value: String(formData[f.id]),
+        mapping: f.mapping || null,
+      }))
+
     try {
       const res = await fetch("/api/orders/submit", {
         method: "POST",
@@ -139,6 +152,7 @@ export function DynamicForm({ form }: DynamicFormProps) {
         body: JSON.stringify({
           ...mappedData,
           form_id: form.id,
+          form_svar: formSvar,
           form_data: formData,
           // Koordinater från Kartverket
           lat: formData._lat ? parseFloat(formData._lat) : null,

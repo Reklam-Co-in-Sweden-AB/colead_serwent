@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const {
       kommune, tomming_type, navn, epost, telefon,
       adresse, gnr, bnr, kommentar, tank_storrelse_m3,
-      form_id,
+      form_id, form_svar,
       // Koordinater
       lat, lng,
       // Tracking-data
@@ -144,6 +144,11 @@ export async function POST(request: NextRequest) {
 
     if (form_id) {
       insertData.form_id = form_id
+    }
+
+    // Lagre alle skjema-svar (label + verdi) så umappede felt ikke går tapt
+    if (Array.isArray(form_svar) && form_svar.length > 0) {
+      insertData.form_svar = form_svar
     }
 
     const { data: order, error: insertError } = await supabase
