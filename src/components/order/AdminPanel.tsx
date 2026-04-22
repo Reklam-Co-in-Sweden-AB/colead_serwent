@@ -926,15 +926,25 @@ function OrderDetail({
             </div>
           </div>
 
-          {/* Kommentar */}
-          {order.kommentar && (
-            <div>
-              <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Kommentar</h3>
-              <div className="bg-[#f8fafc] border border-border rounded-lg p-3 text-sm text-dark whitespace-pre-wrap">
-                {order.kommentar}
+          {/* Kommentar — plockar upp värdet från form_svar som fallback så
+              kommentaren syns även om skjemafältet saknar mapping. */}
+          {(() => {
+            const fromFormSvar = order.form_svar?.find(
+              (s) =>
+                s.mapping === "kommentar" ||
+                /komment|merknad/i.test(s.label)
+            )?.value
+            const kommentarTekst = order.kommentar || fromFormSvar
+            if (!kommentarTekst) return null
+            return (
+              <div>
+                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Kommentar</h3>
+                <div className="bg-[#f8fafc] border border-border rounded-lg p-3 text-sm text-dark whitespace-pre-wrap">
+                  {kommentarTekst}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Alle skjemasvar — fallback som viser alt kunden fylte i, uansett
               om feltet er koblet til en standardkolonne. Collapsed as default
