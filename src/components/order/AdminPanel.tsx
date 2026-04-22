@@ -936,6 +936,35 @@ function OrderDetail({
             </div>
           )}
 
+          {/* Alle skjemasvar — fallback som viser alt kunden fylte i, uansett
+              om feltet er koblet til en standardkolonne. Collapsed as default
+              så den ikke stjeler fokus fra hovedinfoen. */}
+          {order.form_svar && order.form_svar.length > 0 && (
+            <details className="group">
+              <summary className="cursor-pointer text-xs font-semibold text-muted uppercase tracking-wider hover:text-dark transition-colors list-none flex items-center gap-1.5">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  className="transition-transform group-open:rotate-90"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M3 1.5 L7 5 L3 8.5 Z" />
+                </svg>
+                Alle skjemasvar ({order.form_svar.length})
+              </summary>
+              <div className="mt-2 bg-[#f8fafc] border border-border rounded-lg p-3 space-y-2">
+                {order.form_svar.map((svar, i) => (
+                  <div key={i} className="flex gap-2 text-xs">
+                    <span className="text-muted shrink-0 min-w-[120px]">{svar.label}:</span>
+                    <span className="text-dark whitespace-pre-wrap">{svar.value}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           {/* Intern kommentar (kun synlig i admin) */}
           <div>
             <h3 className="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Intern kommentar</h3>
@@ -1060,35 +1089,6 @@ function OrderDetail({
                 </div>
               </form>
             </div>
-          )}
-
-          {/* Alle skjemasvar — fallback som viser alt kunden fylte i, uansett
-              om feltet er koblet til en standardkolonne. Skal være mindre
-              prominent enn «Kommentar»-seksjonen over. */}
-          {order.form_svar && order.form_svar.length > 0 && (
-            <details className="group">
-              <summary className="cursor-pointer text-xs font-semibold text-muted uppercase tracking-wider hover:text-dark transition-colors list-none flex items-center gap-1.5">
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 10 10"
-                  className="transition-transform group-open:rotate-90"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M3 1.5 L7 5 L3 8.5 Z" />
-                </svg>
-                Alle skjemasvar ({order.form_svar.length})
-              </summary>
-              <div className="mt-2 bg-[#f8fafc] border border-border rounded-lg p-3 space-y-2">
-                {order.form_svar.map((svar, i) => (
-                  <div key={i} className="flex gap-2 text-xs">
-                    <span className="text-muted shrink-0 min-w-[120px]">{svar.label}:</span>
-                    <span className="text-dark whitespace-pre-wrap">{svar.value}</span>
-                  </div>
-                ))}
-              </div>
-            </details>
           )}
 
           {/* Meldingshistorikk */}
