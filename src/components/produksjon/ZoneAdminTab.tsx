@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { createSone, updateSone, deleteSone } from "@/actions/soner"
+import { useRouter } from "next/navigation"
+import { createSone, updateSone, deleteSone, deleteSonePermanent, reactivateSone } from "@/actions/soner"
+import { Badge } from "@/components/ui/badge"
 import type { Sone } from "@/types/produksjon"
 
 interface Props {
@@ -16,6 +18,7 @@ const ZONE_COLORS = [
 ]
 
 export function ZoneAdminTab({ soner, kommune }: Props) {
+  const router = useRouter()
   const [newName, setNewName] = useState("")
   const [newGruppe, setNewGruppe] = useState("")
   const [newColor, setNewColor] = useState(ZONE_COLORS[0])
@@ -37,33 +40,88 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
       return
     }
     startTransition(async () => {
-      await createSone({
+      const res = await createSone({
         kommune,
         navn: newName.trim(),
         gruppe: newGruppe.trim() || null,
         farge: newColor,
         sort_order: soner.length,
       })
+      if (res?.error) {
+        alert(res.error)
+        return
+      }
       setNewName("")
       setNewGruppe("")
+      // router.refresh() behövs — revalidatePath på servern räcker inte för att
+      // klientens data ska uppdateras utan en aktiv refetch.
+      router.refresh()
     })
   }
 
   const handleUpdate = (id: string) => {
     startTransition(async () => {
-      await updateSone(id, {
+      const res = await updateSone(id, {
         navn: editName,
         gruppe: editGruppe.trim() || null,
         farge: editColor,
       })
+      if (res?.error) {
+        alert(res.error)
+        return
+      }
       setEditingId(null)
+      router.refresh()
     })
   }
 
-  const handleDelete = (id: string) => {
-    if (!confirm("Er du sikker på at du vil slette denne sonen?")) return
+  const handleHide = (sone: Sone) => {
+    if (!confirm(
+      `Fjerne «${sone.navn}» fra Gantt-oversikten?\n\nSonen beholdes i databasen med all historikk og kan reaktiveres senere.`
+    )) return
     startTransition(async () => {
-      await deleteSone(id)
+      const res = await deleteSone(sone.id)
+      if (res?.error) {
+        alert(res.error)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  const handleReactivate = (sone: Sone) => {
+    startTransition(async () => {
+      const res = await reactivateSone(sone.id)
+      if (res?.error) {
+        alert(res.error)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  const handleDeletePermanent = (sone: Sone) => {
+    const typed = prompt(
+      `ADVARSEL: Dette sletter sonen «${sone.navn}» PERMANENT.\n\n` +
+      `Alle historiske data for sonen forsvinner også:\n` +
+      `  • Ruteplan (utkast og publisert)\n` +
+      `  • Produksjon (registrerte tømminger)\n` +
+      `  • Komtek-importer koblet til sonen\n\n` +
+      `Dette kan IKKE angres.\n\n` +
+      `Skriv inn sonenavnet for å bekrefte:`
+    )
+    if (typed === null) return
+    if (typed.trim() !== sone.navn) {
+      alert("Sonenavnet stemmer ikke. Sletting avbrutt.")
+      return
+    }
+    startTransition(async () => {
+      const res = await deleteSonePermanent(sone.id)
+      if (res?.error) {
+        alert(res.error)
+        return
+      }
+      router.refresh()
     })
   }
 
@@ -188,7 +246,14 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
                       onKeyDown={(e) => e.key === "Enter" && handleUpdate(sone.id)}
                     />
                   ) : (
-                    <span style={{ color: "var(--color-navy)" }}>{sone.navn}</span>
+                    <div className="flex items-center gap-2">
+                      <span style={{ color: "var(--color-navy)", opacity: sone.aktiv ? 1 : 0.55 }}>
+                        {sone.navn}
+                      </span>
+                      {!sone.aktiv && (
+                        <Badge variant="warning">Fjernet fra Gantt</Badge>
+                      )}
+                    </div>
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-xs font-medium">
@@ -237,13 +302,35 @@ export function ZoneAdminTab({ soner, kommune }: Props) {
                         >
                           Rediger
                         </button>
+                        {sone.aktiv ? (
+                          <button
+                            onClick={() => handleHide(sone)}
+                            disabled={isPending}
+                            className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-navy transition-colors"
+                            style={{ color: "var(--color-navy)" }}
+                            title="Skjuler sonen fra Gantt-oversikten. Historikk beholdes."
+                          >
+                            Fjern fra Gantt
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleReactivate(sone)}
+                            disabled={isPending}
+                            className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-green-600 transition-colors"
+                            style={{ color: "#16a34a" }}
+                            title="Viser sonen i Gantt-oversikten igjen."
+                          >
+                            Reaktiver
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleDelete(sone.id)}
+                          onClick={() => handleDeletePermanent(sone)}
                           disabled={isPending}
                           className="px-3 py-1 rounded text-[11px] font-semibold border border-border cursor-pointer hover:border-red transition-colors"
                           style={{ color: "var(--color-red)" }}
+                          title="Sletter sonen og all historikk permanent."
                         >
-                          Slett
+                          Slett permanent
                         </button>
                       </>
                     )}

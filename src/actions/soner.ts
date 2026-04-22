@@ -85,6 +85,8 @@ export async function updateSone(id: string, updates: Partial<SoneInsert & { akt
   return { success: true }
 }
 
+// Mjuk radering — sätter aktiv=false. Sonen försvinner från Gantt-vyn men
+// behålls i databasen, så historik och återaktivering är möjlig.
 export async function deleteSone(id: string) {
   const supabase = await createClient()
 
@@ -95,7 +97,45 @@ export async function deleteSone(id: string) {
 
   if (error) {
     console.error("[deleteSone] Error:", error)
-    return { error: "Kunne ikke slette sone" }
+    return { error: "Kunne ikke fjerne sone fra Gantt" }
+  }
+
+  revalidatePath("/admin/ruteplan")
+  revalidatePath("/admin/produksjon")
+  return { success: true }
+}
+
+// Hård radering — raderar sonen permanent. Cascade rensar även
+// serwent_ruteplan, serwent_produksjon och serwent_komtek_tomming.
+export async function deleteSonePermanent(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("serwent_soner")
+    .delete()
+    .eq("id", id)
+
+  if (error) {
+    console.error("[deleteSonePermanent] Error:", error)
+    return { error: "Kunne ikke slette sone permanent" }
+  }
+
+  revalidatePath("/admin/ruteplan")
+  revalidatePath("/admin/produksjon")
+  return { success: true }
+}
+
+export async function reactivateSone(id: string) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("serwent_soner")
+    .update({ aktiv: true })
+    .eq("id", id)
+
+  if (error) {
+    console.error("[reactivateSone] Error:", error)
+    return { error: "Kunne ikke reaktivere sone" }
   }
 
   revalidatePath("/admin/ruteplan")
