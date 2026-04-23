@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { getRuteplan } from "@/actions/ruteplan"
-import { getSoner, getAllSoner, getKommunerWithSoner } from "@/actions/soner"
+import { getSoner, getAllSoner } from "@/actions/soner"
+import { getKommuner } from "@/actions/settings"
 import { getProduksjon } from "@/actions/produksjon"
 import { getCurrentYear } from "@/lib/week-utils"
 import { MunicipalityYearFilter } from "@/components/produksjon/MunicipalityYearFilter"
@@ -12,7 +13,9 @@ interface Props {
 
 export default async function RuteplanPage({ searchParams }: Props) {
   const params = await searchParams
-  const kommuner = await getKommunerWithSoner()
+  // Hämtar alla kommuner från settings (inte bara de med soner), annars kan
+  // Thomas aldrig välja en tom kommune för att skapa första sonen där.
+  const kommuner = await getKommuner()
 
   let selectedKommuner: string[] = []
   if (params.kommune) {

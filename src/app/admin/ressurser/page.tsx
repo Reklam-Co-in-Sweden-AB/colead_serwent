@@ -4,7 +4,7 @@ import {
   BENCHMARK_TOMM_PER_DAG,
   BENCHMARK_KUBIK_PER_DAG,
 } from "@/lib/ressurs-benchmarks"
-import { getKommunerWithSoner } from "@/actions/soner"
+import { getKommuner } from "@/actions/settings"
 import { getCurrentYear } from "@/lib/week-utils"
 import { MunicipalityYearFilter } from "@/components/produksjon/MunicipalityYearFilter"
 import { RessursDashboard } from "@/components/produksjon/RessursDashboard"
@@ -20,7 +20,8 @@ interface Props {
 
 export default async function RessurserPage({ searchParams }: Props) {
   const params = await searchParams
-  const kommuner = await getKommunerWithSoner()
+  // Alla kommuner från settings — konsistent med Ruteplan-vyn.
+  const kommuner = await getKommuner()
 
   let selectedKommuner: string[] = []
   if (params.kommune) {
