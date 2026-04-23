@@ -14,6 +14,16 @@ import { normalizeAnleggsType } from "@/lib/anleggstype"
 
 type ViewMode = "table" | "kanban" | "list"
 
+// Plocker kommentar fra orders.kommentar om satt, annars fra form_svar
+// (felt som er mappet til «kommentar» eller har label som ligner).
+function getKommentar(order: Order): string | null {
+  if (order.kommentar) return order.kommentar
+  const fromFormSvar = order.form_svar?.find(
+    (s) => s.mapping === "kommentar" || /komment|merknad/i.test(s.label)
+  )?.value
+  return fromFormSvar || null
+}
+
 type OrderMessage = {
   id: string
   channel: string
@@ -520,12 +530,17 @@ function TableView({
                   ))}
                 </select>
               </td>
-              <td
-                className="px-3 py-2.5 text-muted-foreground text-xs max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
-                title={o.kommentar || ""}
-              >
-                {o.kommentar || "–"}
-              </td>
+              {(() => {
+                const k = getKommentar(o)
+                return (
+                  <td
+                    className="px-3 py-2.5 text-muted-foreground text-xs max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                    title={k || ""}
+                  >
+                    {k || "–"}
+                  </td>
+                )
+              })()}
             </tr>
           ))}
         </tbody>
@@ -926,15 +941,9 @@ function OrderDetail({
             </div>
           </div>
 
-          {/* Kommentar — plockar upp värdet från form_svar som fallback så
-              kommentaren syns även om skjemafältet saknar mapping. */}
+          {/* Kommentar — plockar fra form_svar som fallback om mapping mangler. */}
           {(() => {
-            const fromFormSvar = order.form_svar?.find(
-              (s) =>
-                s.mapping === "kommentar" ||
-                /komment|merknad/i.test(s.label)
-            )?.value
-            const kommentarTekst = order.kommentar || fromFormSvar
+            const kommentarTekst = getKommentar(order)
             if (!kommentarTekst) return null
             return (
               <div>
