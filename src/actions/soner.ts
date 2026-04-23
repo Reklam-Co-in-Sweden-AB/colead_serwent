@@ -14,11 +14,11 @@ export async function getSoner(kommune?: string | string[]): Promise<Sone[]> {
     .order("kommune", { ascending: true })
     .order("sort_order", { ascending: true })
 
-  if (kommune) {
+  if (kommune !== undefined) {
     const kommuner = Array.isArray(kommune) ? kommune : [kommune]
-    if (kommuner.length > 0) {
-      query = query.in("kommune", kommuner)
-    }
+    // Tydligt "inga valda" — returnera tom lista direkt
+    if (kommuner.length === 0) return []
+    query = query.in("kommune", kommuner)
   }
 
   const { data, error } = await query

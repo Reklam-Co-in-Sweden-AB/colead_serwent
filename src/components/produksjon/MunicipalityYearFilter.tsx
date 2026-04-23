@@ -14,6 +14,9 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
+  // Lokalt state när dropdown är öppen — så checkbox-klick inte triggar
+  // en server-reload vid varje klick. URL:en uppdateras bara vid close.
+  const [pending, setPending] = useState<string[] | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const updateYear = useCallback(
@@ -30,8 +33,6 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
       const params = new URLSearchParams(searchParams.toString())
       params.delete("kommune")
       params.delete("empty")
-      // Tom liste = tydelig "ingen valgt" (server filtrerer bort alt).
-      // Full liste = "alle valgt" (server ser ingen param → default alle).
       if (selected.length === 0) {
         params.set("empty", "1")
       } else if (selected.length < kommuner.length) {
@@ -42,43 +43,67 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
     [router, searchParams, kommuner.length]
   )
 
+  // Används för att markera "alla bockade" på rader när dropdown är stängd
+  // och URL:en inte har någon explicit kommune-param.
+  const effectiveAllSelected = pending === null
+    && !isEmpty
+    && (currentKommuner.length === 0 || currentKommuner.length === kommuner.length)
+
   const toggleKommune = (k: string) => {
-    // När inget är valt explicit tolkas det som "alle valgt" visuellt.
-    // Klick ska avbocka den specifika, inte gå till single-select.
-    const baseline = isEmpty
-      ? []
-      : currentKommuner.length === 0
-        ? [...kommuner]
-        : [...currentKommuner]
+    const baseline = pending !== null
+      ? [...pending]
+      : isEmpty
+        ? []
+        : currentKommuner.length === 0
+          ? [...kommuner]
+          : [...currentKommuner]
     const set = new Set(baseline)
     if (set.has(k)) set.delete(k)
     else set.add(k)
-    updateKommuner(Array.from(set))
+    setPending(Array.from(set))
   }
 
-  const selectAll = () => updateKommuner(kommuner)
-  const clearAll = () => updateKommuner([])
+  const selectAll = () => setPending([...kommuner])
+  const clearAll = () => setPending([])
 
-  // Lukk ved klikk utenfor
+  // Commit pending → URL när dropdown stängs
+  const commitAndClose = useCallback(() => {
+    if (pending !== null) {
+      // Bara pusha om det faktiskt ändrats
+      const current = new Set(isEmpty ? [] : (currentKommuner.length === 0 ? kommuner : currentKommuner))
+      const next = new Set(pending)
+      const changed = current.size !== next.size || [...current].some((k) => !next.has(k))
+      if (changed) updateKommuner(pending)
+      setPending(null)
+    }
+    setOpen(false)
+  }, [pending, isEmpty, currentKommuner, kommuner, updateKommuner])
+
+  // Lukk ved klikk utenfor — commitar pending changes
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false)
+        commitAndClose()
       }
     }
     document.addEventListener("mousedown", handler)
     return () => document.removeEventListener("mousedown", handler)
-  }, [open])
+  }, [open, commitAndClose])
 
-  const allSelected = !isEmpty && (currentKommuner.length === 0 || currentKommuner.length === kommuner.length)
-  const label = isEmpty
+  // Labeln visar serversidans urval när stängd, pending när öppen
+  const labelSource = pending ?? (isEmpty ? [] : currentKommuner)
+  const labelIsEmpty = pending !== null ? pending.length === 0 : isEmpty
+  const labelAllSelected = pending !== null
+    ? pending.length === kommuner.length
+    : !isEmpty && (currentKommuner.length === 0 || currentKommuner.length === kommuner.length)
+  const label = labelIsEmpty
     ? "Ingen valgt"
-    : allSelected
+    : labelAllSelected
       ? `Alle kommuner (${kommuner.length})`
-      : currentKommuner.length === 1
-        ? currentKommuner[0]
-        : `${currentKommuner.length} av ${kommuner.length} valgt`
+      : labelSource.length === 1
+        ? labelSource[0]
+        : `${labelSource.length} av ${kommuner.length} valgt`
 
   return (
     <div className="flex items-center gap-3">
@@ -108,7 +133,7 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
       <div ref={dropdownRef} className="relative">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => open ? commitAndClose() : setOpen(true)}
           className="px-3 py-1.5 rounded text-sm font-mono font-semibold border border-border bg-white cursor-pointer hover:border-navy transition-colors flex items-center gap-2 min-w-[200px] justify-between"
           style={{ color: "var(--color-navy)" }}
         >
@@ -137,7 +162,9 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
               </button>
             </div>
             {kommuner.map((k) => {
-              const checked = !isEmpty && (currentKommuner.includes(k) || allSelected)
+              const checked = pending !== null
+                ? pending.includes(k)
+                : !isEmpty && (currentKommuner.includes(k) || effectiveAllSelected)
               return (
                 <label
                   key={k}
