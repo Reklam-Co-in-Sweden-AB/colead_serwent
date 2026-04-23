@@ -59,7 +59,7 @@ export async function createSone(sone: SoneInsert) {
 
   if (error) {
     console.error("[createSone] Error:", error)
-    return { error: "Kunne ikke opprette sone" }
+    return { error: `Kunne ikke opprette sone: ${error.message}` }
   }
 
   revalidatePath("/admin/ruteplan")
@@ -77,7 +77,7 @@ export async function updateSone(id: string, updates: Partial<SoneInsert & { akt
 
   if (error) {
     console.error("[updateSone] Error:", error)
-    return { error: "Kunne ikke oppdatere sone" }
+    return { error: `Kunne ikke oppdatere sone: ${error.message}` }
   }
 
   revalidatePath("/admin/ruteplan")

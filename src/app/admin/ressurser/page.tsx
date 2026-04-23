@@ -15,6 +15,7 @@ interface Props {
     aar?: string
     fra?: string
     til?: string
+    empty?: string
   }>
 }
 
@@ -23,13 +24,14 @@ export default async function RessurserPage({ searchParams }: Props) {
   // Alla kommuner från settings — konsistent med Ruteplan-vyn.
   const kommuner = await getKommuner()
 
+  const isEmpty = params.empty === "1"
   let selectedKommuner: string[] = []
   if (params.kommune) {
     selectedKommuner = Array.isArray(params.kommune)
       ? params.kommune
       : params.kommune.split(",").map((s) => s.trim()).filter(Boolean)
   }
-  if (selectedKommuner.length === 0) selectedKommuner = kommuner
+  if (!isEmpty && selectedKommuner.length === 0) selectedKommuner = kommuner
 
   const aar = params.aar ? parseInt(params.aar, 10) : getCurrentYear()
 
@@ -59,6 +61,7 @@ export default async function RessurserPage({ searchParams }: Props) {
             kommuner={kommuner}
             currentKommuner={selectedKommuner}
             currentYear={aar}
+            isEmpty={isEmpty}
           />
         </Suspense>
       </div>

@@ -8,7 +8,7 @@ import { MunicipalityYearFilter } from "@/components/produksjon/MunicipalityYear
 import { RuteplanTabs } from "./RuteplanTabs"
 
 interface Props {
-  searchParams: Promise<{ kommune?: string | string[]; aar?: string; tab?: string }>
+  searchParams: Promise<{ kommune?: string | string[]; aar?: string; tab?: string; empty?: string }>
 }
 
 export default async function RuteplanPage({ searchParams }: Props) {
@@ -17,13 +17,15 @@ export default async function RuteplanPage({ searchParams }: Props) {
   // Thomas aldrig välja en tom kommune för att skapa första sonen där.
   const kommuner = await getKommuner()
 
+  const isEmpty = params.empty === "1"
   let selectedKommuner: string[] = []
   if (params.kommune) {
     selectedKommuner = Array.isArray(params.kommune)
       ? params.kommune
       : params.kommune.split(",").map((s) => s.trim()).filter(Boolean)
   }
-  if (selectedKommuner.length === 0) selectedKommuner = kommuner
+  // Default = alla. Explicit tomt urval hanteras via empty-flagga.
+  if (!isEmpty && selectedKommuner.length === 0) selectedKommuner = kommuner
 
   const aar = params.aar ? parseInt(params.aar, 10) : getCurrentYear()
   const tab = params.tab || "gantt"
@@ -56,6 +58,7 @@ export default async function RuteplanPage({ searchParams }: Props) {
             kommuner={kommuner}
             currentKommuner={selectedKommuner}
             currentYear={aar}
+            isEmpty={isEmpty}
           />
         </Suspense>
       </div>

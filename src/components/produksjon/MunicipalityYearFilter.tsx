@@ -7,9 +7,10 @@ interface Props {
   kommuner: string[]
   currentKommuner: string[]
   currentYear: number
+  isEmpty?: boolean
 }
 
-export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear }: Props) {
+export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear, isEmpty = false }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
@@ -28,8 +29,12 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear 
     (selected: string[]) => {
       const params = new URLSearchParams(searchParams.toString())
       params.delete("kommune")
-      // Alle valgt eller tom liste → fjern param (server tolker som alle)
-      if (selected.length > 0 && selected.length < kommuner.length) {
+      params.delete("empty")
+      // Tom liste = tydelig "ingen valgt" (server filtrerer bort alt).
+      // Full liste = "alle valgt" (server ser ingen param → default alle).
+      if (selected.length === 0) {
+        params.set("empty", "1")
+      } else if (selected.length < kommuner.length) {
         for (const k of selected) params.append("kommune", k)
       }
       router.push(`?${params.toString()}`)
@@ -38,7 +43,14 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear 
   )
 
   const toggleKommune = (k: string) => {
-    const set = new Set(currentKommuner)
+    // När inget är valt explicit tolkas det som "alle valgt" visuellt.
+    // Klick ska avbocka den specifika, inte gå till single-select.
+    const baseline = isEmpty
+      ? []
+      : currentKommuner.length === 0
+        ? [...kommuner]
+        : [...currentKommuner]
+    const set = new Set(baseline)
     if (set.has(k)) set.delete(k)
     else set.add(k)
     updateKommuner(Array.from(set))
@@ -59,9 +71,10 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear 
     return () => document.removeEventListener("mousedown", handler)
   }, [open])
 
-  const allSelected = currentKommuner.length === 0 || currentKommuner.length === kommuner.length
-  const label =
-    allSelected
+  const allSelected = !isEmpty && (currentKommuner.length === 0 || currentKommuner.length === kommuner.length)
+  const label = isEmpty
+    ? "Ingen valgt"
+    : allSelected
       ? `Alle kommuner (${kommuner.length})`
       : currentKommuner.length === 1
         ? currentKommuner[0]
@@ -124,7 +137,7 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear 
               </button>
             </div>
             {kommuner.map((k) => {
-              const checked = currentKommuner.includes(k) || allSelected
+              const checked = !isEmpty && (currentKommuner.includes(k) || allSelected)
               return (
                 <label
                   key={k}
