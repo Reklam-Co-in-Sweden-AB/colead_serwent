@@ -134,7 +134,7 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
         <button
           type="button"
           onClick={() => open ? commitAndClose() : setOpen(true)}
-          className="px-3 py-1.5 rounded text-sm font-mono font-semibold border border-border bg-white cursor-pointer hover:border-navy transition-colors flex items-center gap-2 min-w-[200px] justify-between"
+          className="px-3 py-1.5 rounded text-sm font-mono font-semibold border border-border bg-white cursor-pointer hover:border-navy transition-colors flex items-center gap-2 min-w-[160px] max-w-[220px] justify-between"
           style={{ color: "var(--color-navy)" }}
         >
           <span className="truncate">{label}</span>

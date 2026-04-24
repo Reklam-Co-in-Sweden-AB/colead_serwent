@@ -134,9 +134,9 @@ export function RuteplanTabs({
       {/* Gantt-flik */}
       {tab === "gantt" && (
         <>
-          {/* Kontroller */}
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
+          {/* Kontroller — flex-wrap så raden bryter på smalare skärmar */}
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={handleCopyPrev}
                 disabled={isPending}
@@ -164,7 +164,7 @@ export function RuteplanTabs({
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5 bg-background rounded-lg p-1">
                 <span className="text-[10px] font-semibold text-muted uppercase tracking-wider px-2">
                   Historikk

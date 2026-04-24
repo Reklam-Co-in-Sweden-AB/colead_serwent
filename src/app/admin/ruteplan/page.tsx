@@ -46,7 +46,7 @@ export default async function RuteplanPage({ searchParams }: Props) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
         <h1
           className="text-lg font-semibold"
           style={{ fontFamily: "var(--font-serif)", color: "var(--color-navy)" }}
