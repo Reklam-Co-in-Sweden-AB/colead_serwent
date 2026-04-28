@@ -145,7 +145,32 @@ export function GanttGrid({
   onHistoryCellClick,
   historyLabel,
 }: Props) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  // Auto-extraher gruppe från sone-namn så grupper som "Sone 1: Biri 1",
+  // "Sone 1: Biri 2" osv. samlas under "Sone 1" även om gruppe-fältet saknas.
+  const autoGruppe = useCallback((s: Sone): string | null => {
+    if (s.gruppe) return s.gruppe
+    const m = s.navn.match(/^(Sone\s+\d+)\b[\s:.\-–—]/i)
+    return m ? m[1].replace(/\s+/g, " ") : null
+  }, [])
+
+  // Default: alla grupper med fler än 1 sone är collapsed (Thomas önskemål).
+  // Återinitialiseras när soner-arrayen ändras (t.ex. annan kommun vald).
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set())
+  useEffect(() => {
+    const counts = new Map<string, number>()
+    for (const s of soner) {
+      const g = autoGruppe(s)
+      if (!g) continue
+      const key = `${s.kommune}::${g}`
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+    const initial = new Set<string>()
+    for (const [key, n] of counts) {
+      if (n > 1) initial.add(key)
+    }
+    setCollapsedGroups(initial)
+  }, [soner, autoGruppe])
+
   const toggleGroup = useCallback((key: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev)
@@ -301,13 +326,14 @@ export function GanttGrid({
             const groups: Array<{ key: string; kommune: string; gruppe: string | null; soner: Sone[] }> = []
             const seenKey = new Map<string, number>()
             for (const s of soner) {
-              const key = s.gruppe ? `${s.kommune}::${s.gruppe}` : `__solo__${s.id}`
+              const g = autoGruppe(s)
+              const key = g ? `${s.kommune}::${g}` : `__solo__${s.id}`
               const existing = seenKey.get(key)
               if (existing !== undefined) {
                 groups[existing].soner.push(s)
               } else {
                 seenKey.set(key, groups.length)
-                groups.push({ key, kommune: s.kommune, gruppe: s.gruppe, soner: [s] })
+                groups.push({ key, kommune: s.kommune, gruppe: g, soner: [s] })
               }
             }
 
