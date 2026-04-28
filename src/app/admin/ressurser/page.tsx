@@ -72,7 +72,7 @@ export default async function RessurserPage({ searchParams }: Props) {
         </div>
       )}
 
-      <RessursDashboard perBil={perBil} perOperator={perOperator} />
+      <RessursDashboard perBil={perBil} perOperator={perOperator} aar={aar} />
     </div>
   )
 }

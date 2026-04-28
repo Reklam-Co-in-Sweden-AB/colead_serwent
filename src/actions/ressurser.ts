@@ -12,6 +12,7 @@ export interface RessursStats {
   kubikPerDag: number
   zone: Zone
   dagligt: Array<{ dato: string; antall: number; volum: number }>
+  perKommune: Array<{ kommune: string; antall: number; volum: number }>
 }
 
 interface Query {
@@ -44,6 +45,7 @@ async function hentTomminger(q: Query) {
     tomme_volum: number | null
     tommer: string | null
     bil: string | null
+    kommune: string
   }>
 }
 
@@ -53,6 +55,7 @@ function aggreger(
     tomme_volum: number | null
     tommer: string | null
     bil: string | null
+    kommune: string
   }>,
   felt: "bil" | "tommer"
 ): RessursStats[] {
@@ -60,6 +63,8 @@ function aggreger(
     string,
     Map<string, { antall: number; volum: number }>
   >()
+  // Parallell map för per-kommune-aggregat per navn
+  const kommuneBucket = new Map<string, Map<string, { antall: number; volum: number }>>()
 
   for (const r of rader) {
     const navn = (r[felt] || "").trim()
@@ -71,6 +76,15 @@ function aggreger(
 
     if (!bucket.has(navn)) bucket.set(navn, new Map())
     const dagMap = bucket.get(navn)!
+
+    // Aggregera per kommune också
+    if (!kommuneBucket.has(navn)) kommuneBucket.set(navn, new Map())
+    const kMap = kommuneBucket.get(navn)!
+    const kommune = r.kommune || "(ukjent)"
+    const kPrev = kMap.get(kommune) || { antall: 0, volum: 0 }
+    kPrev.antall += 1
+    kPrev.volum += r.tomme_volum || 0
+    kMap.set(kommune, kPrev)
     const prev = dagMap.get(dato) || { antall: 0, volum: 0 }
     prev.antall += 1
     prev.volum += r.tomme_volum || 0
@@ -89,6 +103,11 @@ function aggreger(
     const perDag = dager > 0 ? antall / dager : 0
     const kubikPerDag = dager > 0 ? totalVolum / dager : 0
 
+    const kMap = kommuneBucket.get(navn) || new Map()
+    const perKommune = Array.from(kMap.entries())
+      .map(([kommune, v]) => ({ kommune, ...v }))
+      .sort((a, b) => b.antall - a.antall)
+
     result.push({
       navn,
       antall,
@@ -98,6 +117,7 @@ function aggreger(
       kubikPerDag,
       zone: klassifiser(perDag, kubikPerDag),
       dagligt,
+      perKommune,
     })
   }
 
