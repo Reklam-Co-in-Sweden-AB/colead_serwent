@@ -158,7 +158,7 @@ export function MunicipalityYearFilter({ kommuner, currentKommuner, currentYear,
                 className="flex-1 px-2 py-1 rounded text-[10px] font-semibold cursor-pointer hover:bg-navy-soft/50 transition-colors"
                 style={{ color: "var(--color-muted)" }}
               >
-                Nullstill
+                Fjern alle
               </button>
             </div>
             {kommuner.map((k) => {
