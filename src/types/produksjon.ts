@@ -1,5 +1,15 @@
 // Typer för Serwent Produksjon & Ruteplanlegger
 
+export interface RodeNotat {
+  id: string
+  sone_id: string
+  aar: number
+  notat: string
+  forfatter: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Sone {
   id: string
   kommune: string

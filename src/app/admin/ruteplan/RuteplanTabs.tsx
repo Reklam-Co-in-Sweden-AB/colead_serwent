@@ -8,7 +8,7 @@ import { ZoneAdminTab } from "@/components/produksjon/ZoneAdminTab"
 import { PublishButton } from "@/components/produksjon/PublishButton"
 import { copyPreviousYear, resetRuteplan, deleteFullRuteplan } from "@/actions/ruteplan"
 import { TommingPanel } from "@/components/produksjon/TommingPanel"
-import type { Sone, Ruteplan, Produksjon } from "@/types/produksjon"
+import type { Sone, Ruteplan, Produksjon, RodeNotat } from "@/types/produksjon"
 import { useTransition } from "react"
 
 interface Props {
@@ -23,6 +23,8 @@ interface Props {
   aar: number
   activeTab: string
   hasUtkast: boolean
+  notater: RodeNotat[]
+  currentUserEmail?: string | null
 }
 
 const TABS = [
@@ -43,6 +45,8 @@ export function RuteplanTabs({
   aar,
   activeTab,
   hasUtkast,
+  notater,
+  currentUserEmail,
 }: Props) {
   const [tab, setTab] = useState(activeTab)
   const [kapasitet] = useState(55)
@@ -264,6 +268,8 @@ export function RuteplanTabs({
           prevPlan={prevRuteplan}
           prevProd={prevProduksjon}
           aar={aar}
+          notater={notater}
+          currentUserEmail={currentUserEmail}
         />
       )}
 

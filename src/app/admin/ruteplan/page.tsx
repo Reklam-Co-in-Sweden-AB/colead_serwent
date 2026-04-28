@@ -4,8 +4,10 @@ import { getSoner, getAllSoner } from "@/actions/soner"
 import { getKommuner } from "@/actions/settings"
 import { getProduksjon } from "@/actions/produksjon"
 import { getCurrentYear } from "@/lib/week-utils"
+import { createClient } from "@/lib/supabase/server"
 import { MunicipalityYearFilter } from "@/components/produksjon/MunicipalityYearFilter"
 import { RuteplanTabs } from "./RuteplanTabs"
+import type { RodeNotat } from "@/types/produksjon"
 
 interface Props {
   searchParams: Promise<{ kommune?: string | string[]; aar?: string; tab?: string; empty?: string }>
@@ -31,14 +33,39 @@ export default async function RuteplanPage({ searchParams }: Props) {
   const tab = params.tab || "gantt"
 
   // Hämta all data parallellt
-  const [soner, allSoner, ruteplan, prevRuteplan, prevProduksjon, currentProduksjon] = await Promise.all([
+  const supabase = await createClient()
+  const [
+    soner,
+    allSoner,
+    ruteplan,
+    prevRuteplan,
+    prevProduksjon,
+    currentProduksjon,
+    userResult,
+  ] = await Promise.all([
     getSoner(selectedKommuner),
     getAllSoner(selectedKommuner),
     getRuteplan(selectedKommuner, aar),
     getRuteplan(selectedKommuner, aar - 1),
     getProduksjon(selectedKommuner, aar - 1),
     getProduksjon(selectedKommuner, aar),
+    supabase.auth.getUser(),
   ])
+
+  const currentUserEmail = userResult.data.user?.email ?? null
+
+  // Hämta alla rode-notater för soner i urvalet (alla år, så historik syns)
+  let notater: RodeNotat[] = []
+  if (allSoner.length > 0) {
+    const soneIds = allSoner.map((s) => s.id)
+    const { data } = await supabase
+      .from("serwent_rode_notat")
+      .select("*")
+      .in("sone_id", soneIds)
+      .order("aar", { ascending: false })
+      .order("created_at", { ascending: false })
+    notater = (data as RodeNotat[]) || []
+  }
 
   // Kontrollera om det finns utkast
   const hasUtkast = ruteplan.some((r) => r.status === "Utkast")
@@ -76,6 +103,8 @@ export default async function RuteplanPage({ searchParams }: Props) {
           aar={aar}
           activeTab={tab}
           hasUtkast={hasUtkast}
+          notater={notater}
+          currentUserEmail={currentUserEmail}
         />
       </Suspense>
     </div>

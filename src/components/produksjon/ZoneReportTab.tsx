@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import type { Sone, Ruteplan, Produksjon } from "@/types/produksjon"
+import type { Sone, Ruteplan, Produksjon, RodeNotat } from "@/types/produksjon"
+import { RodeNotatPanel } from "./RodeNotatPanel"
 
 interface Props {
   soner: Sone[]
@@ -10,9 +11,11 @@ interface Props {
   prevPlan: Ruteplan[]
   prevProd: Produksjon[]
   aar: number
+  notater: RodeNotat[]
+  currentUserEmail?: string | null
 }
 
-export function ZoneReportTab({ soner, currentPlan, currentProd, prevPlan, prevProd, aar }: Props) {
+export function ZoneReportTab({ soner, currentPlan, currentProd, prevPlan, prevProd, aar, notater, currentUserEmail }: Props) {
   const [selectedSone, setSelectedSone] = useState<string>("all")
 
   const filteredSoner = selectedSone === "all"
@@ -167,6 +170,12 @@ export function ZoneReportTab({ soner, currentPlan, currentProd, prevPlan, prevP
                 </tr>
               </tbody>
             </table>
+            <RodeNotatPanel
+              soneId={sone.id}
+              aar={aar}
+              notater={notater.filter((n) => n.sone_id === sone.id)}
+              currentUserEmail={currentUserEmail}
+            />
           </div>
         )
       })}
