@@ -88,12 +88,28 @@ export function AdminPanel({ initialOrders, kommuner }: AdminPanelProps) {
   const handleExport = async () => {
     setExportLoading(true)
     try {
-      const res = await fetch("/api/orders/export")
+      // Speglar aktive tabellfilter inn i CSV-eksporten så de to
+      // eksportveiene (tabell og /admin/export) gir samme resultat.
+      const params = new URLSearchParams()
+      if (kommuneFilter) params.set("kommune", kommuneFilter)
+      if (filter !== "alle") params.set("status", filter)
+      if (typeFilter) params.set("type", typeFilter)
+      if (search.trim()) params.set("search", search.trim())
+      const qs = params.toString()
+
+      const res = await fetch(`/api/orders/export${qs ? `?${qs}` : ""}`)
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `Serwent_Bestillinger_${new Date().toISOString().slice(0, 10)}.csv`
+
+      const parts: string[] = ["Serwent_Bestillinger"]
+      if (kommuneFilter) parts.push(kommuneFilter.replace(/\s+/g, "_"))
+      if (filter !== "alle") parts.push(filter)
+      if (typeFilter) parts.push(typeFilter)
+      parts.push(new Date().toISOString().slice(0, 10))
+      a.download = `${parts.join("_")}.csv`
+
       a.click()
       URL.revokeObjectURL(url)
     } catch {

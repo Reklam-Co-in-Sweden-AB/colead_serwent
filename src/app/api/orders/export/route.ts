@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { STATUS_LABELS } from "@/lib/constants"
+import { STATUS_LABELS, ORDER_STATUSES } from "@/lib/constants"
 import type { Order, OrderStatus } from "@/types/database"
 
 function getOrderType(order: Order, allOrders: Order[]): string {
@@ -21,7 +21,7 @@ function getOrderType(order: Order, allOrders: Order[]): string {
   return `Ekstrabestilling (${earlier.length})`
 }
 
-function toCSV(orders: Order[]): string {
+function toCSV(orders: Order[], allOrders: Order[]): string {
   const headers = [
     "ID",
     "Dato",
@@ -43,7 +43,7 @@ function toCSV(orders: Order[]): string {
     [
       o.order_id,
       new Date(o.created_at).toLocaleString("nb-NO"),
-      getOrderType(o, orders),
+      getOrderType(o, allOrders),
       o.kommune,
       o.tomming_type,
       o.navn,
@@ -60,34 +60,97 @@ function toCSV(orders: Order[]): string {
       .join(";")
   )
 
-  return "\uFEFF" + [headers.join(";"), ...rows].join("\n")
+  return "﻿" + [headers.join(";"), ...rows].join("\n")
+}
+
+// Bygger månadsspann (UTC) från "YYYY-MM" → [från, till)
+function monthRange(manad: string): { from: Date; to: Date } | null {
+  const m = manad.match(/^(\d{4})-(\d{2})$/)
+  if (!m) return null
+  const year = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10)
+  if (month < 1 || month > 12) return null
+  const from = new Date(Date.UTC(year, month - 1, 1))
+  const to = new Date(Date.UTC(year, month, 1))
+  return { from, to }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = createAdminClient()
+    const params = request.nextUrl.searchParams
 
-    // Hämta eventuellt kommunefilter från query-parametrar
-    const kommune = request.nextUrl.searchParams.get("kommune")
+    const kommune = params.get("kommune") || ""
+    const manad = params.get("manad") || ""
+    const status = params.get("status") || ""
+    const type = params.get("type") || "" // "ordinaer" | "ekstra"
+    const search = params.get("search") || ""
 
-    let query = supabase
+    // Hämta alla bestillinger (ev. filtrerat på kommune) så getOrderType
+    // kan räkna mot hela årets bestillinger på samma gnr/bnr.
+    let baseQuery = supabase
       .from("orders")
       .select("*")
       .order("created_at", { ascending: false })
 
     if (kommune) {
-      query = query.eq("kommune", kommune)
+      baseQuery = baseQuery.eq("kommune", kommune)
     }
 
-    const { data: orders, error } = await query
-
+    const { data: allOrders, error } = await baseQuery
     if (error) {
-      return NextResponse.json({ error: "Kunne ikke hente bestillinger" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Kunne ikke hente bestillinger" },
+        { status: 500 }
+      )
+    }
+    const all: Order[] = allOrders || []
+
+    // Tillämpa övriga filter i minnet
+    let filtered: Order[] = all
+
+    if (manad) {
+      const range = monthRange(manad)
+      if (range) {
+        filtered = filtered.filter((o) => {
+          const d = new Date(o.created_at)
+          return d >= range.from && d < range.to
+        })
+      }
     }
 
-    const csv = toCSV(orders || [])
-    const suffix = kommune ? `_${kommune.replace(/\s+/g, "_")}` : ""
-    const filename = `Serwent_Bestillinger${suffix}_${new Date().toISOString().slice(0, 10)}.csv`
+    if (status && (ORDER_STATUSES as readonly string[]).includes(status)) {
+      filtered = filtered.filter((o) => o.status === status)
+    }
+
+    if (type === "ordinaer" || type === "ekstra") {
+      filtered = filtered.filter((o) => {
+        const t = getOrderType(o, all)
+        return type === "ordinaer"
+          ? t === "Ordinaer"
+          : t.startsWith("Ekstrabestilling")
+      })
+    }
+
+    if (search) {
+      const s = search.toLowerCase()
+      filtered = filtered.filter((o) =>
+        [o.navn, o.kommune, o.adresse, o.order_id, o.epost].some((v) =>
+          v?.toLowerCase().includes(s)
+        )
+      )
+    }
+
+    const csv = toCSV(filtered, all)
+
+    // Bygg filnamn med aktiva filter
+    const parts: string[] = ["Serwent_Bestillinger"]
+    if (kommune) parts.push(kommune.replace(/\s+/g, "_"))
+    if (manad) parts.push(manad)
+    if (status) parts.push(status)
+    if (type) parts.push(type)
+    parts.push(new Date().toISOString().slice(0, 10))
+    const filename = parts.join("_") + ".csv"
 
     return new NextResponse(csv, {
       headers: {
