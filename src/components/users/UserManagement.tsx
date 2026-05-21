@@ -3,8 +3,22 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { inviteUser, deleteUser, changeUserPassword, type AdminUser } from "@/actions/users"
+import { inviteUser, deleteUser, changeUserPassword, changeUserRole, type AdminUser } from "@/actions/users"
+import type { UserRole } from "@/actions/roles"
 import { useRouter } from "next/navigation"
+
+// Visningsnamn och badge-färg per roll
+const ROLE_LABELS: Record<UserRole, string> = {
+  bruker: "Bruker",
+  admin: "Admin",
+  super_admin: "Super admin",
+}
+
+const ROLE_VARIANTS: Record<UserRole, "default" | "info" | "warning"> = {
+  bruker: "default",
+  admin: "info",
+  super_admin: "warning",
+}
 
 export function UserManagement({
   users,
@@ -24,6 +38,7 @@ export function UserManagement({
   const [newPw, setNewPw] = useState("")
   const [confirmPw, setConfirmPw] = useState("")
   const [pwLoading, setPwLoading] = useState(false)
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null)
 
   const handleAdd = async () => {
     setError("")
@@ -72,6 +87,21 @@ export function UserManagement({
       setNewPw("")
       setConfirmPw("")
       setChangingPwId(null)
+    }
+  }
+
+  const handleRoleChange = async (userId: string, newRole: UserRole) => {
+    setError("")
+    setSuccess("")
+    setSavingRoleId(userId)
+    const result = await changeUserRole(userId, newRole)
+    setSavingRoleId(null)
+
+    if (result.error) {
+      setError(result.error)
+    } else {
+      setSuccess("Rollen er oppdatert")
+      router.refresh()
     }
   }
 
@@ -176,6 +206,7 @@ export function UserManagement({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-dark">{u.email}</span>
+                    <Badge variant={ROLE_VARIANTS[u.role]}>{ROLE_LABELS[u.role]}</Badge>
                     {u.id === currentUserId && (
                       <Badge variant="success">Du</Badge>
                     )}
@@ -190,7 +221,22 @@ export function UserManagement({
                   </div>
                 </div>
               </div>
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
+                <select
+                  value={u.role}
+                  onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
+                  disabled={u.id === currentUserId || savingRoleId === u.id}
+                  title={
+                    u.id === currentUserId
+                      ? "Du kan ikke endre din egen rolle"
+                      : "Endre rolle"
+                  }
+                  className="border-2 border-border rounded-md px-2 py-1.5 mr-1 text-xs font-semibold text-dark bg-white outline-none focus:border-teal cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="bruker">Bruker</option>
+                  <option value="admin">Admin</option>
+                  <option value="super_admin">Super admin</option>
+                </select>
                 <button
                   onClick={() => {
                     setChangingPwId(changingPwId === u.id ? null : u.id)

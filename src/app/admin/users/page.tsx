@@ -1,9 +1,15 @@
+import { redirect } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { UserManagement } from "@/components/users/UserManagement"
 import { getUsers } from "@/actions/users"
+import { hasRole } from "@/actions/roles"
 import { createClient } from "@/lib/supabase/server"
 
 export default async function UsersPage() {
+  // Bara super_admin har åtkomst till brukeradministrasjon
+  const allowed = await hasRole("super_admin")
+  if (!allowed) redirect("/admin")
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const users = await getUsers()
