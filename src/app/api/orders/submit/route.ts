@@ -40,11 +40,14 @@ export async function POST(request: NextRequest) {
       referrer, fbclid, gclid,
     } = body
 
-    // Validate core fields (mapped from dynamic form or hardcoded)
+    // Validate core fields (mapped from dynamic form or hardcoded).
+    // Adressen valideras alltid på servern — den är obligatorisk for å unngå
+    // bestillinger uten adresse, som gir merarbeid med å finne bestiller.
     const errors: Record<string, string> = {}
     if (!navn?.trim()) errors.navn = "Navn er påkrevd"
     if (!epost?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) errors.epost = "Ugyldig e-post"
     if (!telefon?.trim()) errors.telefon = "Telefon er påkrevd"
+    if (!adresse?.trim()) errors.adresse = "Anleggsadresse er påkrevd"
 
     if (Object.keys(errors).length > 0) {
       return NextResponse.json({ error: "Valideringsfeil", errors }, { status: 400 })

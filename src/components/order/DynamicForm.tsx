@@ -88,7 +88,12 @@ export function DynamicForm({ form }: DynamicFormProps) {
     for (const field of step.form_fields) {
       const value = formData[field.id] || ""
 
-      if (field.required && !value.trim()) {
+      // Adressefelt er alltid påkrevd uavhengig av skjemakonfig — det vises
+      // alltid med stjerne (*) og servern krever det også. Hindrer bestillinger
+      // uten adresse.
+      const isRequired = field.required || field.field_type === "address_lookup"
+
+      if (isRequired && !value.trim()) {
         newErrors[field.id] = `${field.label} er påkrevd`
         continue
       }
