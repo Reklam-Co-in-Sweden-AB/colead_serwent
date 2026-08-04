@@ -62,10 +62,20 @@ export default async function AdminDashboard() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6)
 
-  // Formatera datum
+  // Formatera datum i norsk tid (servern kör i UTC)
   const formatDate = (iso: string) => {
-    const d = new Date(iso)
-    return `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, "0")} kl. ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat("nb-NO", {
+        timeZone: "Europe/Oslo",
+        day: "numeric",
+        month: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+        .formatToParts(new Date(iso))
+        .map((p) => [p.type, p.value])
+    )
+    return `${parts.day}.${parts.month.padStart(2, "0")} kl. ${parts.hour}:${parts.minute}`
   }
 
   return (

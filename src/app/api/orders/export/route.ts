@@ -42,7 +42,7 @@ function toCSV(orders: Order[], allOrders: Order[]): string {
   const rows = orders.map((o) =>
     [
       o.order_id,
-      new Date(o.created_at).toLocaleString("nb-NO"),
+      new Date(o.created_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" }),
       getOrderType(o, allOrders),
       o.kommune,
       o.tomming_type,

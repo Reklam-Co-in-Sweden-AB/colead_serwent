@@ -286,7 +286,7 @@ export async function generateOrdersExcel(
       bnr: order.bnr,
       kommentar: order.kommentar || "",
       created_at: order.created_at
-        ? new Date(order.created_at as string).toLocaleString("nb-NO")
+        ? new Date(order.created_at as string).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })
         : "",
     })
   }

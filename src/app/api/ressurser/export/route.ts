@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   for (const r of rows) {
     const sone = Array.isArray(r.serwent_soner) ? r.serwent_soner[0]?.navn : r.serwent_soner?.navn
     ws.addRow({
-      dato: new Date(r.tomme_dato).toLocaleDateString("nb-NO"),
+      dato: new Date(r.tomme_dato).toLocaleDateString("nb-NO", { timeZone: "Europe/Oslo" }),
       tommer: r.tommer ?? "",
       bil: r.bil ?? "",
       kommune: r.kommune,
