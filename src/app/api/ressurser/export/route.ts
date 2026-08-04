@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 import ExcelJS from "exceljs"
 
 /**
@@ -33,21 +34,31 @@ export async function GET(request: NextRequest) {
 
   // Joina med serwent_soner för att få sone-namn
   const filterColumn = type === "operator" ? "tommer" : "bil"
-  const { data, error } = await supabase
-    .from("serwent_komtek_tomming")
-    .select(`
-      tomme_dato, kunde, adresse, anleggstype, tomme_volum,
-      tommer, bil, kommune, avvik, slangeutlegg, hoydeforskjell,
-      serwent_soner(navn)
-    `)
-    .eq(filterColumn, navn)
-    .eq("aar", aar)
-    .order("tomme_dato", { ascending: true })
+  // Paginerad — en operatörs årsvolym närmar sig PostgREST:s 1000-radersgräns.
+  // Sorterar på id för stabil sidindelning och sorterar om på datum efteråt.
+  const { data, error } = await fetchAllRows(() =>
+    supabase
+      .from("serwent_komtek_tomming")
+      .select(`
+        tomme_dato, kunde, adresse, anleggstype, tomme_volum,
+        tommer, bil, kommune, avvik, slangeutlegg, hoydeforskjell,
+        serwent_soner(navn)
+      `)
+      .eq(filterColumn, navn)
+      .eq("aar", aar)
+      .order("id", { ascending: true })
+  )
 
   if (error) {
     console.error("[ressurser/export]", error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
+
+  data.sort((a, b) =>
+    String((a as { tomme_dato: string }).tomme_dato).localeCompare(
+      String((b as { tomme_dato: string }).tomme_dato)
+    )
+  )
 
   type Row = {
     tomme_dato: string

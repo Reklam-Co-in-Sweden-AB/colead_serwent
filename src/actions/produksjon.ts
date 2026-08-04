@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 import { revalidatePath } from "next/cache"
 import type {
   Produksjon,
@@ -31,23 +32,30 @@ async function getUtfortBestillingerPerUke(
   const aarStart = new Date(aar, 0, 1).toISOString()
   const aarSlutt = new Date(aar + 1, 0, 1).toISOString()
 
-  // Hent utførte ordrer i kommunene for året
-  const { data: ordrer } = await supabase
-    .from("orders")
-    .select("id, kommune, gnr, bnr, updated_at, planlagt_dato")
-    .in("kommune", kommuner)
-    .eq("status", "utfort")
-    .gte("updated_at", aarStart)
-    .lt("updated_at", aarSlutt)
+  // Hent utførte ordrer i kommunene for året.
+  // Paginert — antallet overstiger PostgREST sin standardgrense på 1000 rader.
+  const { data: ordrer } = await fetchAllRows(() =>
+    supabase
+      .from("orders")
+      .select("id, kommune, gnr, bnr, updated_at, planlagt_dato")
+      .in("kommune", kommuner)
+      .eq("status", "utfort")
+      .gte("updated_at", aarStart)
+      .lt("updated_at", aarSlutt)
+      .order("id", { ascending: true })
+  )
 
   if (!ordrer || ordrer.length === 0) return result
 
   // Hent Comtech-registrerte tømminger i samme periode for overlapp-sjekk
-  const { data: komtekRader } = await supabase
-    .from("serwent_komtek_tomming")
-    .select("kommune, eiendom, adresse, uke")
-    .in("kommune", kommuner)
-    .eq("aar", aar)
+  const { data: komtekRader } = await fetchAllRows(() =>
+    supabase
+      .from("serwent_komtek_tomming")
+      .select("kommune, eiendom, adresse, uke")
+      .in("kommune", kommuner)
+      .eq("aar", aar)
+      .order("id", { ascending: true })
+  )
 
   // Nøkkel: kommune|gnr/bnr|uke — treffer også "eiendom"-feltet som vanligvis er "gnr/bnr"
   const komtekSet = new Set<string>()

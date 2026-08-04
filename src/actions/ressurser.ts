@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 import { klassifiser, type Zone } from "@/lib/ressurs-benchmarks"
 
 export interface RessursStats {
@@ -24,18 +25,25 @@ interface Query {
 
 async function hentTomminger(q: Query) {
   const supabase = await createClient()
-  let query = supabase
-    .from("serwent_komtek_tomming")
-    .select("tomme_dato, tomme_volum, tommer, bil, kommune, aar")
-    .eq("aar", q.aar)
 
-  if (q.kommuner && q.kommuner.length > 0) {
-    query = query.in("kommune", q.kommuner)
-  }
-  if (q.fra) query = query.gte("tomme_dato", q.fra)
-  if (q.til) query = query.lte("tomme_dato", q.til)
+  // Paginerad hämtning — antalet tömningar per år överstiger PostgREST:s
+  // standardgräns på 1000 rader, och utan paginering trunkeras datan tyst.
+  const { data, error } = await fetchAllRows(() => {
+    let query = supabase
+      .from("serwent_komtek_tomming")
+      .select("tomme_dato, tomme_volum, tommer, bil, kommune, aar")
+      .eq("aar", q.aar)
 
-  const { data, error } = await query
+    if (q.kommuner && q.kommuner.length > 0) {
+      query = query.in("kommune", q.kommuner)
+    }
+    if (q.fra) query = query.gte("tomme_dato", q.fra)
+    if (q.til) query = query.lte("tomme_dato", q.til)
+
+    // Stabil sortering på unik kolumn krävs för korrekt sidindelning
+    return query.order("id", { ascending: true })
+  })
+
   if (error) {
     console.error("[hentTomminger] Error:", error)
     return []
