@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { renderTemplate, sendMessageToOrder, generateOrdersExcel, type TemplateVars, type EmailAttachment } from "@/lib/messaging"
 import { ORDER_STATUSES } from "@/lib/constants"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
+import type { Order } from "@/types/database"
 
 type TriggerType = "new_order" | "status_change" | "scheduled"
 type ActionType = "send_sms" | "send_email" | "change_status" | "webhook"
@@ -118,20 +120,23 @@ export async function runScheduledAutomation(automation: {
   const supabase = createAdminClient()
   const config = automation.trigger_config as ScheduledTriggerConfig
 
-  // Bygg query baserat på orderfilter
-  let query = supabase.from("orders").select("*")
+  // Bygg query baserat på orderfilter. Pagineras — en schemalagd automation
+  // som matchar fler än 1000 ordrar skulle annars tyst hoppa över resten.
+  const { data: orders, error } = await fetchAllRows<Order & Record<string, unknown>>(() => {
+    let query = supabase.from("orders").select("*").order("id")
 
-  if (config.order_filter?.status) {
-    query = query.eq("status", config.order_filter.status)
-  }
+    if (config.order_filter?.status) {
+      query = query.eq("status", config.order_filter.status)
+    }
 
-  if (config.order_filter?.older_than_days) {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - config.order_filter.older_than_days)
-    query = query.lte("created_at", cutoff.toISOString())
-  }
+    if (config.order_filter?.older_than_days) {
+      const cutoff = new Date()
+      cutoff.setDate(cutoff.getDate() - config.order_filter.older_than_days)
+      query = query.lte("created_at", cutoff.toISOString())
+    }
 
-  const { data: orders, error } = await query
+    return query
+  })
 
   if (error) {
     throw new Error(`Feil ved henting av ordrar: ${error.message}`)

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { getForms } from "@/actions/forms"
@@ -6,9 +7,17 @@ import { getForms } from "@/actions/forms"
 export default async function AdminDashboard() {
   const supabase = await createClient()
 
+  const weekAgoISO = new Date(Date.now() - 7 * 86400000).toISOString()
+
+  // Statusräkning görs i databasen med count — att hämta raderna och räkna i
+  // minnet träffar PostgREST:s tak på 1000 rader och ger tyst för låga siffror.
   // Hämta all data parallellt
   const [
-    { data: orders },
+    { count: totalOrders },
+    { count: nyCount },
+    { count: behandlingCount },
+    { count: utfortCount },
+    { count: recentOrderCountRaw },
     { count: totalViews },
     { count: weekViews },
     { count: totalConversions },
@@ -17,32 +26,35 @@ export default async function AdminDashboard() {
     { data: utmSources },
     forms,
   ] = await Promise.all([
-    supabase.from("orders").select("status, created_at"),
+    supabase.from("orders").select("*", { count: "exact", head: true }),
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "ny"),
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "under_behandling"),
+    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "utfort"),
+    supabase.from("orders").select("*", { count: "exact", head: true }).gte("created_at", weekAgoISO),
     supabase.from("serwent_form_views").select("*", { count: "exact", head: true }),
     supabase.from("serwent_form_views").select("*", { count: "exact", head: true })
-      .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+      .gte("created_at", weekAgoISO),
     supabase.from("serwent_conversions").select("*", { count: "exact", head: true }),
     supabase.from("serwent_conversions").select("*", { count: "exact", head: true })
-      .gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+      .gte("created_at", weekAgoISO),
     supabase.from("serwent_conversions")
       .select("order_id, utm_source, utm_medium, utm_campaign, referrer, created_at")
       .order("created_at", { ascending: false })
       .limit(10),
-    supabase.from("serwent_conversions")
-      .select("utm_source"),
+    fetchAllRows<{ utm_source: string | null }>(() =>
+      supabase.from("serwent_conversions").select("utm_source").order("id")
+    ),
     getForms(),
   ])
 
   const stats = {
-    ny: orders?.filter((o) => o.status === "ny").length || 0,
-    under_behandling: orders?.filter((o) => o.status === "under_behandling").length || 0,
-    utfort: orders?.filter((o) => o.status === "utfort").length || 0,
-    total: orders?.length || 0,
+    ny: nyCount || 0,
+    under_behandling: behandlingCount || 0,
+    utfort: utfortCount || 0,
+    total: totalOrders || 0,
   }
 
-  const week = new Date()
-  week.setDate(week.getDate() - 7)
-  const recentOrderCount = orders?.filter((o) => new Date(o.created_at) > week).length || 0
+  const recentOrderCount = recentOrderCountRaw || 0
 
   // Beräkna konverteringsgrad
   const convRate = (totalViews || 0) > 0

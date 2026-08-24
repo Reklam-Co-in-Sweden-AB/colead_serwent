@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 
 export interface GeoPoint {
   lat: number
@@ -47,31 +48,43 @@ export async function getReportData(fra?: string, til?: string): Promise<ReportD
     { data: orders },
     { data: allTimeOrders },
   ] = await Promise.all([
-    supabase
-      .from("serwent_form_views")
-      .select("id, utm_source, utm_medium, utm_campaign, referrer, created_at")
-      .gte("created_at", fromISO)
-      .lte("created_at", toISO),
+    fetchAllRows<{ id: string; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; created_at: string }>(() =>
+      supabase
+        .from("serwent_form_views")
+        .select("id, utm_source, utm_medium, utm_campaign, referrer, created_at")
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("id")
+    ),
     supabase
       .from("serwent_form_views")
       .select("id", { count: "exact", head: true })
       .gte("created_at", sevenDaysAgo),
-    supabase
-      .from("serwent_conversions")
-      .select("id, order_id, utm_source, utm_medium, utm_campaign, referrer, created_at")
-      .gte("created_at", fromISO)
-      .lte("created_at", toISO),
-    supabase
-      .from("orders")
-      .select("id, order_id, status, adresse, created_at, lat, lng")
-      .gte("created_at", fromISO)
-      .lte("created_at", toISO),
+    fetchAllRows<{ id: string; order_id: string; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; created_at: string }>(() =>
+      supabase
+        .from("serwent_conversions")
+        .select("id, order_id, utm_source, utm_medium, utm_campaign, referrer, created_at")
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("id")
+    ),
+    fetchAllRows<{ id: string; order_id: string; status: string; adresse: string; created_at: string; lat: number | null; lng: number | null }>(() =>
+      supabase
+        .from("orders")
+        .select("id, order_id, status, adresse, created_at, lat, lng")
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("id")
+    ),
     // Alla orders genom tiderna — för ny/återkommande-analys
-    supabase
-      .from("orders")
-      .select("adresse, created_at")
-      .not("adresse", "eq", "")
-      .order("created_at", { ascending: true }),
+    fetchAllRows<{ adresse: string; created_at: string }>(() =>
+      supabase
+        .from("orders")
+        .select("adresse, created_at")
+        .not("adresse", "eq", "")
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+    ),
   ])
 
   const allViews = views || []

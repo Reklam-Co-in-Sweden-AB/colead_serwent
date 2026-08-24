@@ -86,9 +86,33 @@ query kan returnera fler än 1000 rader (allt som hämtar ett helt år av
 queryn — utan stabil sortering är radordningen mellan sidorna odefinierad och
 rader kan dupliceras eller hoppas över.
 
+Samma bugg återkom 2026-08-24: `orders` passerade 1000 rader och dashboarden
+frös på "1000 totalt / 0 nye / 1 under behandling / 999 utført" medan databasen
+hade 2 643 bestillinger. Fem ställen hämtade `orders` (och
+`serwent_conversions`) utan paginering: dashboarden, bestillingslistan,
+CSV-exporten, rapportsidan och de schemalagda automationerna. Fixen infördes
+bara i produksjon-/ressurser-flödena i augusti — övriga hämtställen missades.
+
+**Vid rena räkningar:** använd `.select("*", { count: "exact", head: true })` i
+stället för att hämta rader och räkna i minnet. Det är både korrekt och
+billigare. Att filtrera en hämtad lista för att räkna status är själva
+antimönstret som orsakade båda buggarna.
+
+**Kom ihåg vid nya features:** varje ny query mot `orders`, `serwent_conversions`
+eller `serwent_form_views` måste antingen pagineras, räknas med `count`, eller
+medvetet begränsas med `.limit()`.
+
 ### Volymer kan komma in i liter i stället för m³
 
-Två rader hos Ole Voldhaug (2026-06-26) har `tomme_volum` 13500 och 11000 medan
-snittet för övriga rader är 4,33 m³. Sannolikt liter-inmatningar i källsystemet.
+Två rader hos Ole Voldhaug (2026-06-26) hade `tomme_volum` 13500 och 11000 medan
+snittet för övriga rader är 4,33 m³ — liter-inmatningar i källsystemet. Thomas
+Austbø bekräftade 2026-08-05 att rätt volym är 13,5 och 11 m³, och raderna
+rättades i databasen 2026-08-10. Oles m³/dag gick då från 431,2 till 42,7.
+
 Enstaka sådana rader slår hårt mot m³/dag-snittet — kontrollera extremvärden
-innan produktionssiffror tolkas.
+innan produktionssiffror tolkas. Efter rättningen är högsta kvarvarande värden
+90, 85 och 55 m³ (en rad vardera), vilka är rimliga för större anlegg.
+
+**Obs:** rättningen gjordes bara i portalens databas. Felet finns kvar i Comtech,
+så en omimport av samma period kan skriva tillbaka liter-värdena — verifiera
+extremvärden efter varje import tills källan är rättad.

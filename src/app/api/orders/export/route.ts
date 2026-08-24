@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { STATUS_LABELS, ORDER_STATUSES } from "@/lib/constants"
 import type { Order, OrderStatus } from "@/types/database"
+import { fetchAllRows } from "@/lib/supabase/fetch-all"
 
 function getOrderType(order: Order, allOrders: Order[]): string {
   const year = new Date(order.created_at).getFullYear()
@@ -88,16 +89,19 @@ export async function GET(request: NextRequest) {
 
     // Hämta alla bestillinger (ev. filtrerat på kommune) så getOrderType
     // kan räkna mot hela årets bestillinger på samma gnr/bnr.
-    let baseQuery = supabase
-      .from("orders")
-      .select("*")
-      .order("created_at", { ascending: false })
+    const { data: allOrders, error } = await fetchAllRows<Order>(() => {
+      let q = supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
 
-    if (kommune) {
-      baseQuery = baseQuery.eq("kommune", kommune)
-    }
+      if (kommune) {
+        q = q.eq("kommune", kommune)
+      }
 
-    const { data: allOrders, error } = await baseQuery
+      return q
+    })
     if (error) {
       return NextResponse.json(
         { error: "Kunne ikke hente bestillinger" },
